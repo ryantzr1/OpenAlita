@@ -1,0 +1,416 @@
+:root {
+  --font-family-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue",
+    sans-serif;
+  --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+
+  --page-bg: #f0f2f5; /* HuggingFace-like light grey background */
+  --sidebar-bg: #f8f9fa; /* Slightly different from page for contrast */
+  --sidebar-width: 260px;
+  --sidebar-text-color: #343a40;
+  --sidebar-icon-color: #495057;
+  --sidebar-hover-bg: #e9ecef;
+  --sidebar-active-bg: #dee2e6;
+  --sidebar-border-color: #dee2e6;
+
+  --chat-container-bg: #ffffff;
+  --text-primary: #1f2328;
+  --text-secondary: #565f69;
+  --text-placeholder: #9ca3af; /* Adjusted for lighter placeholder text like image */
+
+  --user-bubble-bg: #4a5568; /* Neutral dark grey */
+  --user-bubble-text: #ffffff;
+  --assistant-bubble-bg: #f8f9fa; /* Lighter grey for Alita's bubble */
+  --assistant-bubble-text: var(--text-primary);
+  --assistant-bubble-border: #eef0f2; /* Very light border for Alita's bubble */
+
+  --input-area-bg: var(
+    --chat-container-bg
+  ); /* Match chat container background */
+  --main-input-group-bg: #f8f9fa; /* Light grey for the input field group */
+  --main-input-group-border: #e5e7eb; /* Softer border */
+  --main-input-focus-border: #a5b4fc; /* Lighter blue focus */
+  --main-input-focus-shadow: 0 0 0 3px rgba(165, 180, 252, 0.3);
+
+  --send-button-bg: #f3f4f6; /* Light grey, slightly different from input group */
+  --send-button-icon-color: #6b7280; /* Icon color */
+  --send-button-hover-bg: #e5e7eb;
+  --send-button-disabled-bg: #f3f4f6;
+  --send-button-disabled-icon-color: #9ca3af;
+
+  --border-light: #d0d7de;
+  --link-color: #007bff;
+
+  --scrollbar-thumb-bg: #adb5bd;
+  --scrollbar-thumb-hover-bg: #5c677d;
+  --scrollbar-track-bg: var(--page-bg);
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  font-family: var(--font-family-sans);
+  background-color: var(--page-bg);
+  color: var(--text-primary);
+  font-size: 16px;
+  overflow: hidden; /* Prevent body scrollbars if app-layout manages scrolling */
+}
+
+.app-layout {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* Sidebar Styles */
+.sidebar {
+  width: var(--sidebar-width);
+  background-color: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border-color);
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  box-sizing: border-box;
+  color: var(--sidebar-text-color);
+  flex-shrink: 0;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--sidebar-border-color);
+}
+
+.sidebar-logo {
+  width: 32px;
+  height: 32px;
+  margin-right: 0.75rem;
+}
+
+.sidebar-title {
+  font-size: 1.25em;
+  font-weight: 600;
+}
+
+.sidebar-nav {
+  flex-grow: 1;
+  overflow-y: auto;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-radius: 0.375rem; /* 6px */
+  text-decoration: none;
+  color: var(--sidebar-text-color);
+  margin-bottom: 0.25rem;
+  transition: background-color 0.15s ease;
+  font-size: 0.9375em; /* 15px */
+}
+
+.nav-item:hover {
+  background-color: var(--sidebar-hover-bg);
+}
+
+.nav-item.active {
+  background-color: var(--sidebar-active-bg);
+  font-weight: 500;
+}
+
+.nav-icon {
+  width: 20px;
+  height: 20px;
+  fill: currentColor; /* Use current text color for icon */
+  margin-right: 0.75rem;
+  opacity: 0.8;
+}
+
+.sidebar-footer {
+  padding-top: 1rem;
+  border-top: 1px solid var(--sidebar-border-color);
+}
+
+/* Main Content Area Styles */
+.main-content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow-y: hidden; /* Main content area itself should not scroll if chat interface does */
+  /* padding: 1.5rem; */ /* Removed padding to make chat interface full width */
+  box-sizing: border-box;
+}
+
+.chat-interface-container {
+  /* This was .container */
+  width: 100%;
+  height: 100%; /* Take full height of parent main-content padding box */
+  /* max-width: 1000px; */ /* Allow full width within main-content */
+  /* margin: 0 auto; */ /* No longer needed if full width */
+  background-color: var(--chat-container-bg);
+  /* border-radius: 0.5rem; */ /* Remove radius if it's edge-to-edge */
+  /* box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.08); */ /* Remove shadow if edge-to-edge */
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Center children like conversation-log and input-area-container */
+  overflow: hidden; /* Important for internal scrolling of chat log */
+}
+
+/* Chat Header (inside main content) */
+.chat-header-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* For potential future items like "New Chat" button */
+  padding: 0.75rem 1.25rem; /* 12px 20px */
+  border-bottom: 1px solid var(--border-light);
+  background-color: var(--chat-container-bg);
+  flex-shrink: 0;
+  /* Height can be adjusted or made minimal if title is removed */
+  min-height: 40px; /* Reduced as it's empty */
+  width: 100%; /* Ensure header takes full width before its content is centered */
+  max-width: 768px; /* Match other centered content width */
+  box-sizing: border-box;
+}
+
+.header-emoji {
+  /* display: none; */ /* Will be controlled by HTML removal */
+  width: 28px;
+  height: 28px;
+  margin-right: 0.5rem; /* 8px */
+}
+
+.header-title-text {
+  /* display: none; */ /* Will be controlled by HTML removal */
+  font-size: 1.125em; /* 18px */
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Conversation Log Styles */
+.conversation-log {
+  flex-grow: 1;
+  padding: 1.25rem; /* Adjusted padding */
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem; /* 12px */
+  width: 100%; /* Take full width of parent initially */
+  max-width: 768px; /* Constrain to match input area width */
+  /* margin: 0 auto; */ /* No longer needed, parent .chat-interface-container centers it */
+  box-sizing: border-box; /* Include padding in width calculation */
+}
+
+.message-row {
+  display: flex;
+  width: 100%;
+  margin-bottom: 0.25rem;
+}
+
+.message-bubble {
+  padding: 0.75rem 1rem; /* 12px 16px */
+  border-radius: 0.75rem; /* 12px */
+  line-height: 1.5;
+  font-size: 0.9375em; /* 15px */
+  max-width: 85%;
+  word-wrap: break-word;
+  box-shadow: none; /* Remove previous shadow, more flat like HF */
+}
+
+.message-bubble strong {
+  font-weight: 600;
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.875em; /* 14px */
+  color: inherit;
+}
+
+/* User messages */
+.user-row {
+  justify-content: flex-end;
+}
+.user-bubble {
+  background-color: var(--user-bubble-bg);
+  color: var(--user-bubble-text);
+  /* No specific tail for user, common in flat UIs */
+}
+.user-bubble strong {
+  display: none;
+}
+
+/* Alita (Assistant) messages */
+.alita-row {
+  justify-content: flex-start;
+}
+.alita-bubble {
+  background-color: var(--assistant-bubble-bg);
+  color: var(--assistant-bubble-text);
+  border: 1px solid var(--assistant-bubble-border);
+}
+.alita-bubble strong {
+  color: var(--text-secondary);
+}
+
+/* System & Error messages - simplified for now */
+.system-row,
+.error-row {
+  justify-content: center;
+  width: 100%;
+}
+.system-bubble,
+.error-bubble {
+  font-style: italic;
+  color: var(--text-secondary);
+  background-color: transparent;
+  font-size: 0.875em;
+  text-align: center;
+  padding: 0.25rem 0;
+  max-width: 100%;
+  box-shadow: none;
+}
+.error-bubble {
+  color: #d92f2f;
+  font-weight: 500;
+}
+
+/* Input Area Styles - Updated for padding and centering */
+.input-area-container {
+  padding: 1.5rem 2rem;
+  border-top: 1px solid var(--border-light);
+  background-color: var(--input-area-bg);
+  flex-shrink: 0;
+  display: flex; /* Added to help center content if needed, or for footer layout */
+  flex-direction: column; /* Stack input elements wrapper and footer text */
+  align-items: center; /* Center children horizontally */
+  width: 100%; /* Ensure it takes full width to allow its children to be centered properly */
+  box-sizing: border-box;
+}
+
+.input-elements-wrapper {
+  display: flex;
+  align-items: flex-end; /* Align textarea and button to their bottom */
+  gap: 0.75rem; /* Space between input group and send button */
+  width: 100%; /* Take full width of parent */
+  max-width: 768px; /* Max width for the input elements + button, similar to HF */
+  /* margin: 0 auto; Already centered by .input-area-container align-items */
+}
+
+.main-input-group {
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  background-color: var(--main-input-group-bg);
+  border: 1px solid var(--main-input-group-border);
+  border-radius: 1rem;
+  padding: 0.25rem;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.main-input-group:focus-within {
+  border-color: var(--main-input-focus-border);
+  box-shadow: var(--main-input-focus-shadow);
+}
+
+#command-input {
+  flex-grow: 1;
+  padding: 0.875rem 0.625rem;
+  border: none;
+  background-color: transparent;
+  color: var(--text-primary);
+  outline: none;
+  resize: none;
+  font-size: 1em;
+  line-height: 1.5;
+  min-height: calc(1em * 1.5);
+  overflow-y: hidden;
+}
+
+#command-input::placeholder {
+  color: var(--text-placeholder);
+  opacity: 1;
+}
+
+.quick-actions-placeholder {
+  display: flex;
+  align-items: center;
+  padding-right: 0.5rem;
+}
+
+#send-button {
+  flex-shrink: 0;
+  background-color: var(--send-button-bg);
+  color: var(--send-button-icon-color);
+  border: none;
+  border-radius: 50%;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+  cursor: pointer;
+  transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out;
+}
+
+#send-button svg.send-icon {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+#send-button:hover {
+  background-color: var(--send-button-hover-bg);
+}
+
+#send-button:disabled {
+  background-color: var(--send-button-disabled-bg);
+  color: var(--send-button-disabled-icon-color);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.footer-text {
+  font-size: 0.75em;
+  color: var(--text-secondary);
+  text-align: center;
+  padding-top: 0.75rem; /* Space above the footer text */
+  width: 100%; /* Ensure it spans the width of its container if centered */
+  max-width: 768px; /* Match max-width of input elements for alignment */
+  margin-top: 0.25rem; /* Small space from input elements */
+}
+
+/* Scrollbar styling */
+.conversation-log::-webkit-scrollbar,
+.sidebar-nav::-webkit-scrollbar,
+textarea#command-input::-webkit-scrollbar {
+  width: 8px;
+}
+.conversation-log::-webkit-scrollbar-track,
+.sidebar-nav::-webkit-scrollbar-track,
+textarea#command-input::-webkit-scrollbar-track {
+  background: var(--scrollbar-track-bg);
+  border-radius: 10px;
+}
+.conversation-log::-webkit-scrollbar-thumb,
+.sidebar-nav::-webkit-scrollbar-thumb,
+textarea#command-input::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb-bg);
+  border-radius: 10px;
+}
+.conversation-log::-webkit-scrollbar-thumb:hover,
+.sidebar-nav::-webkit-scrollbar-thumb:hover,
+textarea#command-input::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover-bg);
+}
+
+/* Hide scrollbar from textarea initially if overflow is hidden */
+textarea#command-input::-webkit-scrollbar {
+  display: none; /* Initially hide, JS shows via overflow:auto */
+}
+textarea#command-input[style*="overflow-y: auto"]::-webkit-scrollbar {
+  display: block; /* Show when JS sets overflow-y to auto */
+}

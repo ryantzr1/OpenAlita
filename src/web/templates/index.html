@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Alita Chat</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+  </head>
+  <body>
+    <div class="app-layout">
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <span class="sidebar-title">OpenAlita</span>
+        </div>
+        <nav class="sidebar-nav">
+          <a href="#" class="nav-item active">
+            <svg class="nav-icon" viewBox="0 0 24 24">
+              <path
+                d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"
+              />
+            </svg>
+            Chats
+          </a>
+          <a href="#" class="nav-item">
+            <svg class="nav-icon" viewBox="0 0 24 24">
+              <path
+                d="M12 3C6.48 3 2 7.48 2 13s4.48 10 10 10 10-4.48 10-10S17.52 3 12 3zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"
+              />
+            </svg>
+            Models
+          </a>
+          <a href="#" class="nav-item">
+            <svg class="nav-icon" viewBox="0 0 24 24">
+              <path
+                d="M17.5 12A5.5 5.5 0 0112 17.5 5.5 5.5 0 016.5 12 5.5 5.5 0 0112 6.5a5.5 5.5 0 015.5 5.5M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"
+              />
+            </svg>
+            Assistants
+          </a>
+          <a href="#" class="nav-item">
+            <svg class="nav-icon" viewBox="0 0 24 24">
+              <path
+                d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17-.59-1.69-.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19-.15-.24-.42.12-.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69-.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18-.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23-.09.49 0 .61-.22l2-3.46c.12-.22-.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"
+              />
+            </svg>
+            Tools
+          </a>
+        </nav>
+        <div class="sidebar-footer">
+          <a href="#" class="nav-item">
+            <svg class="nav-icon" viewBox="0 0 24 24">
+              <path
+                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"
+              />
+            </svg>
+            Settings
+          </a>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <div class="chat-interface-container">
+          <div id="conversation-log" class="conversation-log"></div>
+          <div class="input-area-container">
+            <div class="input-elements-wrapper">
+              <div class="main-input-group">
+                <textarea
+                  id="command-input"
+                  placeholder="Ask anything..."
+                  rows="1"
+                  aria-label="Command input"
+                ></textarea>
+                <div class="quick-actions-placeholder">
+                  <!-- Future icons here e.g. globe, paperclip, plus -->
+                </div>
+              </div>
+              <button id="send-button" aria-label="Send message">
+                <svg
+                  class="send-icon"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    d="M3.105 3.105a.75.75 0 01.924-.638l12.582 4.193a.75.75 0 010 1.27l-12.582 4.193a.75.75 0 01-.924-.638V9.75H8.5a.75.75 0 000-1.5H3.105V3.105z"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div class="footer-text">
+              Alita can make mistakes. Consider checking important information.
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      setTimeout(function () {
+        const conversationLog = document.getElementById("conversation-log");
+        const textareaElement = document.getElementById("command-input");
+        const sendButton = document.getElementById("send-button");
+
+        if (!conversationLog || !textareaElement || !sendButton) {
+          console.error(
+            "FATAL UI ERROR (Full UI): Core elements not found. IDs should be conversation-log, command-input (textarea), send-button."
+          );
+          document.body.innerHTML =
+            '<div style="padding:20px;text-align:center;color:red;"><h1>Interface Error</h1><p>Chat components failed to load. Please ensure HTML IDs are correct.</p></div>';
+          return;
+        }
+
+        // Helper function to escape HTML characters
+        function escapeHtml(text) {
+          const div = document.createElement("div");
+          div.textContent = text;
+          return div.innerHTML;
+        }
+
+        // Helper function to convert text with newlines to HTML with <br> tags
+        function textToHtml(text) {
+          return escapeHtml(text).replace(/\n/g, "<br>");
+        }
+
+        function adjustTextareaHeight() {
+          if (!textareaElement) return;
+          textareaElement.style.height = "auto";
+          const maxHeight =
+            parseFloat(getComputedStyle(textareaElement).lineHeight) * 4;
+          textareaElement.style.height =
+            Math.min(textareaElement.scrollHeight, maxHeight) + "px";
+          if (textareaElement.scrollHeight > maxHeight) {
+            textareaElement.style.overflowY = "auto";
+          } else {
+            textareaElement.style.overflowY = "hidden";
+          }
+        }
+
+        function scrollToBottom() {
+          if (conversationLog) {
+            conversationLog.scrollTop = conversationLog.scrollHeight;
+          }
+        }
+
+        function appendMessage(sender, text, messageType) {
+          const messageRow = document.createElement("div");
+          messageRow.classList.add("message-row", messageType + "-row");
+          const messageBubble = document.createElement("div");
+          messageBubble.classList.add(
+            "message-bubble",
+            messageType + "-bubble"
+          );
+          const senderStrong = document.createElement("strong");
+          senderStrong.textContent = sender + ": ";
+          messageBubble.appendChild(senderStrong);
+
+          // Use innerHTML to preserve formatting
+          const contentDiv = document.createElement("span");
+          contentDiv.innerHTML = textToHtml(text);
+          messageBubble.appendChild(contentDiv);
+
+          messageRow.appendChild(messageBubble);
+          conversationLog.appendChild(messageRow);
+          conversationLog.scrollTop = conversationLog.scrollHeight;
+        }
+
+        async function sendCommand() {
+          const input = document.getElementById("command-input");
+          const command = input.value.trim();
+
+          if (command === "") return;
+
+          appendMessage("You", command, "user");
+          input.value = "";
+          input.style.height = "auto";
+          adjustTextareaHeight();
+          sendButton.disabled = true;
+
+          // Create Alita's message bubble immediately
+          const alitaMessageRow = document.createElement("div");
+          alitaMessageRow.classList.add("message-row", "alita-row");
+          const alitaBubble = document.createElement("div");
+          alitaBubble.classList.add("message-bubble", "alita-bubble");
+          alitaBubble.innerHTML =
+            '<strong>Alita:</strong> <span class="streaming-content">Thinking...</span>';
+          alitaMessageRow.appendChild(alitaBubble);
+          conversationLog.appendChild(alitaMessageRow);
+          scrollToBottom();
+
+          const streamingContentSpan =
+            alitaBubble.querySelector(".streaming-content");
+          let firstChunkReceived = false;
+          let accumulatedContent = "";
+
+          try {
+            const response = await fetch("/send_command", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ command: command }),
+            });
+
+            if (!response.ok) {
+              const errorData = await response
+                .json()
+                .catch(() => ({ error: "Failed to process error response" }));
+              throw new Error(
+                errorData.error || `Server error: ${response.status}`
+              );
+            }
+
+            // Handle streaming with proper text formatting
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+
+            while (true) {
+              const { value, done } = await reader.read();
+
+              if (done) {
+                console.log("CLIENT STREAM: Stream finished.");
+                break;
+              }
+
+              // Decode the chunk
+              const chunk = decoder.decode(value, { stream: true });
+              console.log("CLIENT STREAM: Received chunk:", chunk);
+
+              if (!firstChunkReceived) {
+                console.log(
+                  "CLIENT STREAM: First chunk, replacing placeholder"
+                );
+                accumulatedContent = chunk;
+                firstChunkReceived = true;
+              } else {
+                console.log("CLIENT STREAM: Appending chunk");
+                accumulatedContent += chunk;
+              }
+
+              // Update the content with proper HTML formatting
+              streamingContentSpan.innerHTML = textToHtml(accumulatedContent);
+              scrollToBottom();
+            }
+          } catch (error) {
+            console.error("Error:", error);
+            if (streamingContentSpan) {
+              streamingContentSpan.innerHTML = textToHtml(
+                "Error: " + error.message
+              );
+            } else {
+              appendMessage("Alita", "Error: " + error.message, "error");
+            }
+          } finally {
+            sendButton.disabled = false;
+            input.focus();
+            adjustTextareaHeight();
+          }
+        }
+
+        const initialSystemPrompt = "{{ system_prompt|safe }}";
+        if (initialSystemPrompt) {
+          appendMessage("Alita", initialSystemPrompt, "system");
+        }
+
+        sendButton.addEventListener("click", sendCommand);
+        textareaElement.addEventListener("input", adjustTextareaHeight);
+        textareaElement.addEventListener("keydown", function (event) {
+          if (
+            event.key === "Enter" &&
+            !event.shiftKey &&
+            !event.metaKey &&
+            !event.ctrlKey
+          ) {
+            event.preventDefault();
+            sendCommand();
+          }
+        });
+
+        adjustTextareaHeight();
+      }, 0);
+    </script>
+  </body>
+</html>
