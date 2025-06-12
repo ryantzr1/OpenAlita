@@ -73,9 +73,7 @@
                   rows="1"
                   aria-label="Command input"
                 ></textarea>
-                <div class="quick-actions-placeholder">
-                  <!-- Future icons here e.g. globe, paperclip, plus -->
-                </div>
+                <div class="quick-actions-placeholder"></div>
               </div>
               <button id="send-button" aria-label="Send message">
                 <svg
@@ -105,22 +103,18 @@
         const sendButton = document.getElementById("send-button");
 
         if (!conversationLog || !textareaElement || !sendButton) {
-          console.error(
-            "FATAL UI ERROR (Full UI): Core elements not found. IDs should be conversation-log, command-input (textarea), send-button."
-          );
+          console.error("FATAL UI ERROR: Core elements not found.");
           document.body.innerHTML =
             '<div style="padding:20px;text-align:center;color:red;"><h1>Interface Error</h1><p>Chat components failed to load. Please ensure HTML IDs are correct.</p></div>';
           return;
         }
 
-        // Helper function to escape HTML characters
         function escapeHtml(text) {
           const div = document.createElement("div");
           div.textContent = text;
           return div.innerHTML;
         }
 
-        // Helper function to convert text with newlines to HTML with <br> tags
         function textToHtml(text) {
           return escapeHtml(text).replace(/\n/g, "<br>");
         }
@@ -157,7 +151,6 @@
           senderStrong.textContent = sender + ": ";
           messageBubble.appendChild(senderStrong);
 
-          // Use innerHTML to preserve formatting
           const contentDiv = document.createElement("span");
           contentDiv.innerHTML = textToHtml(text);
           messageBubble.appendChild(contentDiv);
@@ -179,7 +172,6 @@
           adjustTextareaHeight();
           sendButton.disabled = true;
 
-          // Create Alita's message bubble immediately
           const alitaMessageRow = document.createElement("div");
           alitaMessageRow.classList.add("message-row", "alita-row");
           const alitaBubble = document.createElement("div");
@@ -213,7 +205,6 @@
               );
             }
 
-            // Handle streaming with proper text formatting
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
 
@@ -221,26 +212,18 @@
               const { value, done } = await reader.read();
 
               if (done) {
-                console.log("CLIENT STREAM: Stream finished.");
                 break;
               }
 
-              // Decode the chunk
               const chunk = decoder.decode(value, { stream: true });
-              console.log("CLIENT STREAM: Received chunk:", chunk);
 
               if (!firstChunkReceived) {
-                console.log(
-                  "CLIENT STREAM: First chunk, replacing placeholder"
-                );
                 accumulatedContent = chunk;
                 firstChunkReceived = true;
               } else {
-                console.log("CLIENT STREAM: Appending chunk");
                 accumulatedContent += chunk;
               }
 
-              // Update the content with proper HTML formatting
               streamingContentSpan.innerHTML = textToHtml(accumulatedContent);
               scrollToBottom();
             }

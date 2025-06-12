@@ -31,11 +31,11 @@ def test_should_finish_execution(mcp_agent):
 
 def test_cleanup(mcp_agent):
     asyncio.run(mcp_agent.cleanup())
-    assert mcp_agent.mcp_clients.sessions is None  # Assuming cleanup disconnects sessions
+    assert mcp_agent.mcp_clients.sessions is None
 
 def test_refresh_tools(mcp_agent):
     asyncio.run(mcp_agent._refresh_tools())
-    assert isinstance(mcp_agent.tool_schemas, dict)  # Ensure tool schemas are refreshed
+    assert isinstance(mcp_agent.tool_schemas, dict)
 
 def test_think_no_sessions(mcp_agent):
     mcp_agent.mcp_clients.sessions = None
@@ -47,4 +47,4 @@ def test_think_with_sessions(mcp_agent):
     mcp_agent.mcp_clients.sessions = [MCPClients()]
     mcp_agent.mcp_clients.tool_map = {"tool1": "description"}
     result = asyncio.run(mcp_agent.think())
-    assert result is True  # Assuming think processes correctly with active sessions
+    assert result is True
