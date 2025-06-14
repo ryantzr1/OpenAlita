@@ -1,16 +1,19 @@
 import os
-import requests
 import json
 from dotenv import load_dotenv
+import litellm  # Unified LLM client supporting OpenAI models via the same interface
 
 class LLMProvider:
     """Placeholder for interacting with an LLM API like DeepSeek."""
     
     def __init__(self, api_key=None, api_url=None):
         load_dotenv()
-        self.api_key = api_key if api_key else os.getenv("ANTHROPIC_API_KEY")
-        self.api_url = api_url if api_url else "https://api.anthropic.com/v1/"
-        self.model_name = "claude-3-5-sonnet-20241022"
+        # Use OpenAI key + endpoint by default (litellm will route correctly)
+        self.api_key = api_key if api_key else os.getenv("OPENAI_API_KEY")
+        self.api_url = api_url if api_url else os.getenv("OPENAI_API_BASE")  # optional
+
+        # Default to an OpenAI chat model; can be changed via env var
+        self.model_name = os.getenv("LLM_MODEL_NAME", "gpt-4o-mini")
 
     def generate_mcp_script(self, mcp_name, task_description, args_details, user_command):
         """Generate an MCP script using Claude API based on the provided parameters."""
@@ -116,59 +119,35 @@ Generate ONLY the MCP script with proper formatting. Do not include any explanat
         return prompt
     
     def _make_api_call(self, prompt_text):
-        """Makes an HTTP request to Anthropic's Claude API with streaming enabled."""
-        url = "https://api.anthropic.com/v1/messages"
-        headers = {
-            "x-api-key": self.api_key,
-            "content-type": "application/json",
-            "anthropic-version": "2023-06-01",
-        }
-        payload = {
-            "model": self.model_name,
-            "max_tokens": 1500,
-            "temperature": 0.5,
-            "stream": True,
-            "messages": [{"role": "user", "content": prompt_text}]
-        }
-        
+        """Stream completion tokens using LiteLLM (defaults to OpenAI provider)."""
+
         try:
-            response = requests.post(url, headers=headers, json=payload, timeout=20, stream=True)
-            response.raise_for_status()
-            
-            for line in response.iter_lines():
-                if not line:
-                    continue
-                if line.startswith(b"data: "):
-                    line_data_str = line[6:].decode('utf-8')
-                    if line_data_str == "[DONE]":
-                        break
+            response_stream = litellm.completion(
+                model=self.model_name,
+                messages=[{"role": "user", "content": prompt_text}],
+                api_key=self.api_key,
+                api_base=self.api_url,
+                temperature=0.5,
+                max_tokens=1500,
+                stream=True,
+            )
+
+            for chunk in response_stream:
+                # LiteLLM returns either object or dict depending on version/provider
+                delta_text = None
+                try:
+                    delta_text = chunk.choices[0].delta.content  # type: ignore[attr-defined]
+                except AttributeError:
                     try:
-                        data = json.loads(line_data_str)
-                        event_type = data.get("type")
+                        delta_text = chunk["choices"][0].get("delta", {}).get("content")
+                    except (KeyError, TypeError):
+                        delta_text = None
 
-                        if event_type == "content_block_delta":
-                            delta_text = data.get("delta", {}).get("text")
-                            if delta_text:
-                                yield delta_text
-                        elif event_type == "message_stop":
-                            break
-                        elif event_type == "error":
-                            error_message = data.get("error", {}).get("message", "Unknown API error from stream")
-                            yield f"Error: API Stream Error - {error_message}"
-                            return
+                if delta_text:
+                    yield delta_text
 
-                    except json.JSONDecodeError:
-                        continue
-            
-        except requests.exceptions.Timeout:
-            yield "Error: API timeout"
-        except requests.exceptions.RequestException as e:
-            error_text = str(e)
-            if hasattr(e, 'response') and e.response is not None and e.response.text:
-                error_text = f"{str(e)} - {e.response.text[:500]}"
-            yield f"Error: API request failed - {error_text}"
         except Exception as e:
-            yield f"Error: Unexpected API error - {str(e)}"
+            yield f"Error: LLM request failed - {str(e)}"
 
     def parse_intent(self, user_command):
         """Use the LLM to parse user intent and extract action/args from natural language."""
