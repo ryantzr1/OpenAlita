@@ -2,6 +2,8 @@
 
 Open-Alita is a generalist agent designed to enable scalable agentic reasoning with minimal predefinition and maximal self-evolution. This project leverages the Model Context Protocol (MCP) to dynamically create, adapt, and reuse capabilities based on the demands of various tasks, moving away from the reliance on predefined tools and workflows.
 
+**Follow updates & connect:** [@ryan_tzr on Twitter](https://x.com/ryan_tzr)
+
 ## Architecture
 
 Open-Alita implements a modular, self-evolving architecture built around the Model Context Protocol (MCP). The system is designed to minimize hard-coded behaviors while maximizing adaptive capabilities.
