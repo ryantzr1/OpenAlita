@@ -1,7 +1,7 @@
 import os
 import json
 from dotenv import load_dotenv
-import litellm  # Unified LLM client supporting OpenAI models via the same interface
+import litellm
 
 class LLMProvider:
     """Placeholder for interacting with an LLM API like DeepSeek."""
@@ -14,6 +14,9 @@ class LLMProvider:
 
         # Default to an OpenAI chat model; can be changed via env var
         self.model_name = os.getenv("LLM_MODEL_NAME", "gpt-4o-mini")
+        
+        # Store the last generated script for retrieval
+        self.last_generated_script = None
 
     def generate_mcp_script(self, mcp_name, task_description, args_details, user_command):
         """Generate an MCP script using Claude API based on the provided parameters."""
@@ -38,12 +41,20 @@ class LLMProvider:
         except Exception as e:
             return None
 
-    def generate_mcp_script_streaming(self, mcp_name, task_description, args_details, user_command):
+    def generate_mcp_script_streaming(self, mcp_name, user_command, task_description=None, args_details=None):
         """Generate an MCP script using Claude API with real-time streaming."""
+        # Use provided values or derive from user_command
+        if task_description is None:
+            task_description = f"Handle the user command: {user_command}"
+        if args_details is None:
+            args_details = "No specific arguments specified"
+            
         prompt = self._build_mcp_generation_prompt(
             mcp_name, task_description, args_details, user_command
         )
         
+        # Reset and prepare to store the generated script
+        script_chunks = []
         first_chunk_processed = False
         try:
             for chunk in self._make_api_call(prompt):
@@ -52,10 +63,18 @@ class LLMProvider:
                         yield chunk
                         return
                     first_chunk_processed = True
+                script_chunks.append(chunk)
                 yield chunk
+            
+            # Store the complete script for later retrieval
+            self.last_generated_script = "".join(script_chunks) if script_chunks else None
+            
         except Exception as e:
             yield f"Error: Unexpected error during LLM generation - {str(e)}"
-
+    
+    def get_last_generated_mcp_script(self):
+        """Retrieve the last generated MCP script."""
+        return self.last_generated_script
 
     def _build_mcp_generation_prompt(self, mcp_name, task_description, args_details, user_command):
         """Build a comprehensive prompt for MCP script generation."""
@@ -70,51 +89,103 @@ Arguments Details: {args_details}
 
 Original User Command: {user_command}
 
+CRITICAL: You MUST generate a REUSABLE, PARAMETERIZED function that gets the current command dynamically. DO NOT hardcode any command strings.
+
 Please generate a complete, functional Python MCP script that:
 
 1. **Follows this exact format structure:**
    ```
    # MCP Name: {mcp_name}
    # Description: [clear description of what this MCP does]
-   # Arguments: [list each argument with type and description]
+   # Arguments: [parameters this function can handle]
    # Returns: [what the function returns]
    # Requires: [any imports needed, if applicable]
    
    [import statements if needed]
    
-   def {mcp_name}([parameters]):
-       [implementation]
+   def {mcp_name}():
+       # Get the current command from the global context
+       import builtins
+       current_command = getattr(builtins, '_current_user_command', '')
+       
+       # EXTRACT PARAMETERS FROM THE CURRENT COMMAND
+       # DO NOT HARDCODE VALUES
+       return "result as string"
    ```
 
-2. **Requirements:**
-   - The function must be named exactly `{mcp_name}`
-   - Include comprehensive error handling with try/catch blocks
-   - Return meaningful error messages as strings when things go wrong
-   - Use proper type hints where appropriate
-   - Handle edge cases gracefully
-   - Include clear comments explaining the logic
-   - If external libraries are needed, import them at the top
+2. **CRITICAL Requirements for Reusability:**
+   - Get the current command using: `current_command = getattr(builtins, '_current_user_command', '')`
+   - Extract parameters from this current_command variable
+   - DO NOT hardcode any command strings or specific parameters
+   - Make the function work for ANY similar command with different parameters
 
-3. **Best Practices:**
-   - Validate all inputs
-   - Handle common error scenarios (invalid input, network issues, file not found, etc.)
-   - Return consistent data types
-   - Use descriptive variable names
-   - Keep the function focused on a single responsibility
-   - When using the 'datetime' module for current time, ensure you use 'datetime.datetime.now()'.
-
-4. **Error Handling Pattern:**
+3. **Parameter Extraction Example for GitHub repositories:**
    ```python
-   try:
-       # main logic here
-       return result
-   except SpecificException as e:
-       return f"Error: {{e}}"
-   except Exception as e:
-       return f"Unexpected error in {mcp_name}: {{e}}"
+   def github_stars():
+       import re
+       import requests
+       import builtins
+       
+       try:
+           # Get the current command from global context
+           current_command = getattr(builtins, '_current_user_command', '')
+           if not current_command:
+               return "Error: No command provided"
+           
+           # Extract repository from the current command
+           repo_pattern = r'([a-zA-Z0-9_-]+)/([a-zA-Z0-9_.-]+)'
+           repo_match = re.search(repo_pattern, current_command)
+           
+           if not repo_match:
+               return "Could not find a valid GitHub repository in the command"
+           
+           owner, repo_name = repo_match.groups()
+           repo_full = f"{{owner}}/{{repo_name}}"
+           
+           # GitHub API request
+           api_url = f"https://api.github.com/repos/{{repo_full}}"
+           headers = {{'Accept': 'application/vnd.github.v3+json'}}
+           response = requests.get(api_url, headers=headers)
+           
+           if response.status_code == 200:
+               repo_data = response.json()
+               star_count = repo_data.get('stargazers_count', 0)
+               return f"The repository {{repo_full}} has {{star_count}} stars"
+           elif response.status_code == 404:
+               return f"Repository {{repo_full}} not found on GitHub"
+           else:
+               return f"GitHub API error: Status code {{response.status_code}}"
+               
+       except Exception as e:
+           return f"Error in github_stars: {{str(e)}}"
    ```
 
-Generate ONLY the MCP script with proper formatting. Do not include any explanatory text before or after the script."""
+4. **Other Parameter Extraction Examples:**
+
+   For weather queries:
+   ```python
+   # Get current command and extract location
+   current_command = getattr(builtins, '_current_user_command', '')
+   words = current_command.lower().split()
+   location_words = [w for w in words if w not in ['weather', 'in', 'for', 'at', 'the', 'what', 'is']]
+   location = location_words[0] if location_words else "London"
+   ```
+
+   For greetings:
+   ```python
+   # Get current command and extract name
+   current_command = getattr(builtins, '_current_user_command', '')
+   words = current_command.split()
+   name_words = [w for w in words if w.lower() not in ['greet', 'hello', 'hi', 'say']]
+   name = name_words[0] if name_words else "friend"
+   ```
+
+IMPORTANT: 
+- Generate ONLY the complete MCP script
+- ALWAYS use `current_command = getattr(builtins, '_current_user_command', '')` to get the current command
+- DO NOT hardcode any command strings or parameters
+- Make the function truly reusable for different commands with different parameters
+"""
 
         return prompt
     
@@ -128,7 +199,7 @@ Generate ONLY the MCP script with proper formatting. Do not include any explanat
                 api_key=self.api_key,
                 api_base=self.api_url,
                 temperature=0.5,
-                max_tokens=1500,
+                max_tokens=3000,
                 stream=True,
             )
 

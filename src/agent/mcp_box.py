@@ -12,11 +12,25 @@ class MCPBox:
                 "source": source,
                 "requires": requires,
                 "script_content": script_content if source == "dynamically-generated" else None,
-                "original_command": original_command  # Store the original user command
+                "original_command": original_command
             }
             print(f"   Agent Log: New MCP '{name}' ({source}) added. Description: {description}")
         else:
             print(f"   Agent Log: MCP '{name}' already exists. Not overriding.")
+
+    def register_mcp(self, name: str, function, metadata: dict):
+        """Register an MCP with metadata dictionary format."""
+        self.add_mcp(
+            name=name,
+            function=function,
+            description=metadata.get('description', 'No description'),
+            args_info=metadata.get('args', 'N/A'),
+            returns_info=metadata.get('returns', 'N/A'),
+            source=metadata.get('source', 'dynamically-generated'),
+            requires=metadata.get('requires'),
+            script_content=metadata.get('script_content'),
+            original_command=metadata.get('original_command')
+        )
 
     def get_mcp(self, name: str):
         return self.mcps.get(name)

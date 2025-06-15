@@ -8,3 +8,4 @@ pydantic[email]==1.10.2
 loguru==0.6.0
 litellm==1.31.8
 requests==2.32.3
+firecrawl-py>=0.0.16
