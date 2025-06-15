@@ -8,6 +8,10 @@ Open-Alita is a generalist agent designed to enable scalable agentic reasoning w
 
 Open-Alita implements a modular, self-evolving architecture built around the Model Context Protocol (MCP). The system is designed to minimize hard-coded behaviors while maximizing adaptive capabilities.
 
+**📊 [View Complete Architecture Diagram](./assets/architecture_diagram.md)**
+
+The architecture consists of multiple layers working together to provide intelligent query routing, dynamic tool creation, and web search capabilities.
+
 ### Core Components
 
 #### 1. **AlitaAgent** (`src/agent/alita_agent.py`)
