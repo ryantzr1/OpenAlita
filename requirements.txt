@@ -1,11 +1,22 @@
-Pydantic==1.10.2
-fastapi==0.95.0
-httpx==0.23.0
-uvicorn==0.22.0
-pytest==7.2.0
-aiofiles==0.8.0
-pydantic[email]==1.10.2
-loguru==0.6.0
-litellm==1.31.8
-requests==2.32.3
+# Core dependencies
+pydantic>=2.0.0,<3.0.0
+fastapi>=0.100.0
+httpx>=0.24.0
+uvicorn>=0.20.0
+pytest>=7.2.0
+aiofiles>=22.0.0
+pydantic[email]>=2.0.0
+loguru>=0.6.0
+litellm>=1.50.0,<1.52.0
+requests>=2.32.3
 firecrawl-py>=0.0.16
+typing-extensions>=4.8.0
+
+# LangGraph and related dependencies for multi-agent workflows
+langgraph>=0.0.60
+langchain-core>=0.1.0
+langchain-community>=0.0.20
+
+# Additional dependencies for compatibility
+pydantic-settings>=2.0.0
+aiohttp>=3.9.0,<3.10.0

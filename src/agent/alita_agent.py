@@ -3,12 +3,14 @@ import re
 import inspect
 import logging
 import traceback
+import asyncio
 from typing import Dict, Any, List, Generator, Union, Optional, Tuple
 
 from .llm_provider import LLMProvider
 from .mcp_box import MCPBox
 from .mcp_factory import MCPFactory
 from .web_agent import WebAgent
+from .langgraph_workflow import LangGraphWorkflowManager
 
 # Configure logging
 logger = logging.getLogger('alita.agent')
@@ -22,9 +24,19 @@ class AlitaAgent:
         self.llm_provider = LLMProvider()
         self.mcp_factory = MCPFactory()
         self.web_agent = WebAgent()
+        
+        # Initialize LangGraph workflow manager
+        logger.info("Initializing LangGraph workflow system")
+        self.langgraph_manager = LangGraphWorkflowManager(
+            self.llm_provider, 
+            self.mcp_box, 
+            self.web_agent, 
+            self.mcp_factory
+        )
+        
         logger.info("Preloading basic MCPs")
         self._preload_basic_mcps()
-        logger.info("AlitaAgent initialized successfully")
+        logger.info("AlitaAgent initialized successfully with LangGraph support")
 
     def _preload_basic_mcps(self):
         """Preload some basic MCPs."""
@@ -535,3 +547,188 @@ Generate ONLY the MCP name (no explanation, no quotes, just the name):"""
             return False
         
         return False
+
+    async def process_command_async(self, command_str: str) -> str:
+        """Async version of command processing that can use LangGraph workflows."""
+        if not command_str.strip():
+            return "Please enter a command."
+
+        logger.info(f"Processing command async: '{command_str}'")
+
+        # Check if this command should use the LangGraph workflow
+        if self.langgraph_manager.should_use_langgraph(command_str):
+            logger.info("Command routed to LangGraph multi-agent workflow")
+            return await self._process_with_langgraph(command_str)
+        else:
+            logger.info("Command routed to traditional single-agent processing")
+            return await self._process_with_traditional_agent(command_str)
+
+    async def _process_with_langgraph(self, command_str: str) -> str:
+        """Process command using LangGraph multi-agent workflow."""
+        try:
+            logger.info(f"LangGraph processing: {command_str}")
+            
+            # Use the LangGraph workflow manager
+            output_messages = await self.langgraph_manager.process_query_streaming(command_str)
+            
+            if output_messages:
+                # Combine all agent messages into a cohesive response
+                response_parts = []
+                response_parts.append("🔄 **Multi-Agent Workflow Results:**\n")
+                
+                for i, message in enumerate(output_messages[:-1]):  # All but the last message
+                    response_parts.append(f"{message}\n")
+                
+                # Add final response prominently
+                if output_messages:
+                    response_parts.append("\n" + "="*50)
+                    response_parts.append(f"\n**Final Answer:**\n{output_messages[-1]}")
+                
+                return "\n".join(response_parts)
+            else:
+                return "I apologize, but I couldn't process your request through the multi-agent workflow."
+                
+        except Exception as e:
+            logger.error(f"Error in LangGraph processing: {e}", exc_info=True)
+            return f"Error in multi-agent workflow: {str(e)}"
+
+    async def _process_with_traditional_agent(self, command_str: str) -> str:
+        """Process command using traditional single-agent approach."""
+        try:
+            # Convert streaming response to single response
+            result_parts = []
+            for chunk in self.process_command_streaming(command_str):
+                if chunk != "quit_signal":
+                    result_parts.append(chunk)
+            
+            return "".join(result_parts)
+            
+        except Exception as e:
+            logger.error(f"Error in traditional processing: {e}", exc_info=True)
+            return f"Error processing command: {str(e)}"
+
+    def process_command_with_routing(self, command_str: str) -> Generator[str, None, None]:
+        """Enhanced command processing with intelligent routing between single and multi-agent workflows."""
+        if not command_str.strip():
+            yield "Please enter a command."
+            return
+
+        logger.info(f"Processing command with intelligent routing: '{command_str}'")
+
+        # Quick commands that don't need LangGraph
+        if command_str.lower().strip() in ["help", "quit"]:
+            for chunk in self.process_command_streaming(command_str):
+                yield chunk
+            return
+
+        # Determine if this should use LangGraph
+        if self.langgraph_manager.should_use_langgraph(command_str):
+            yield "🔄 **Routing to Multi-Agent Workflow**\n"
+            yield "This query will be processed by multiple specialized agents working together...\n\n"
+            
+            # Run async LangGraph processing
+            try:
+                import asyncio
+                
+                # Check if we're already in an event loop
+                try:
+                    loop = asyncio.get_running_loop()
+                    # We're in an async context, need to handle this differently
+                    result = asyncio.run_coroutine_threadsafe(
+                        self._process_with_langgraph(command_str), 
+                        loop
+                    ).result(timeout=60)
+                    yield result
+                except RuntimeError:
+                    # No running loop, we can use asyncio.run
+                    result = asyncio.run(self._process_with_langgraph(command_str))
+                    yield result
+                    
+            except Exception as e:
+                logger.error(f"Error in LangGraph workflow: {e}", exc_info=True)
+                yield f"⚠️ Multi-agent workflow failed: {str(e)}\n"
+                yield "Falling back to traditional processing...\n\n"
+                
+                # Fallback to traditional processing
+                for chunk in self.process_command_streaming(command_str):
+                    yield chunk
+        else:
+            yield "🔧 **Using Traditional Agent Processing**\n"
+            yield "This query will be handled by the core Alita agent...\n\n"
+            
+            # Use traditional streaming processing
+            for chunk in self.process_command_streaming(command_str):
+                yield chunk
+
+    def get_workflow_status(self) -> Dict[str, Any]:
+        """Get status information about the workflow systems."""
+        return {
+            "langgraph_enabled": self.langgraph_manager is not None,
+            "available_agents": [
+                "orchestrator",
+                "researcher", 
+                "analyzer",
+                "synthesizer",
+                "executor"
+            ],
+            "traditional_agent_mcps": len(self.mcp_box.mcps),
+            "web_agent_enabled": self.web_agent is not None
+        }
+
+    def explain_workflow_routing(self, command_str: str) -> str:
+        """Explain why a command would be routed to a particular workflow."""
+        uses_langgraph = self.langgraph_manager.should_use_langgraph(command_str)
+        
+        explanation = f"**Workflow Routing Analysis for:** '{command_str}'\n\n"
+        
+        if uses_langgraph:
+            explanation += "✅ **Will use Multi-Agent LangGraph Workflow**\n\n"
+            explanation += "**Reasons:**\n"
+            
+            query_lower = command_str.lower()
+            
+            # Check for research indicators
+            research_indicators = [
+                'analyze', 'compare', 'research', 'investigate', 'study',
+                'what is', 'how does', 'why', 'explain', 'tell me about'
+            ]
+            found_research = [ind for ind in research_indicators if ind in query_lower]
+            if found_research:
+                explanation += f"- Contains research keywords: {', '.join(found_research)}\n"
+            
+            # Check for multi-step indicators
+            multi_step_indicators = [
+                'first', 'then', 'after', 'next', 'finally',
+                'step by step', 'process', 'workflow'
+            ]
+            found_multi_step = [ind for ind in multi_step_indicators if ind in query_lower]
+            if found_multi_step:
+                explanation += f"- Contains multi-step keywords: {', '.join(found_multi_step)}\n"
+            
+            # Check for analysis indicators
+            analysis_indicators = [
+                'statistics', 'trends', 'patterns', 'insights',
+                'correlation', 'relationship', 'impact'
+            ]
+            found_analysis = [ind for ind in analysis_indicators if ind in query_lower]
+            if found_analysis:
+                explanation += f"- Contains analysis keywords: {', '.join(found_analysis)}\n"
+            
+            if len(command_str.split()) > 8:
+                explanation += f"- Query is complex ({len(command_str.split())} words)\n"
+            
+            explanation += "\n**Workflow Steps:**\n"
+            explanation += "1. 🤖 Orchestrator will analyze task complexity\n"
+            explanation += "2. 🔍 Researcher may gather information from web sources\n"
+            explanation += "3. 📊 Analyzer may extract insights from gathered data\n"
+            explanation += "4. ⚙️ Executor may create/run specialized tools\n"
+            explanation += "5. 🎯 Synthesizer will create the final comprehensive response\n"
+            
+        else:
+            explanation += "⚡ **Will use Traditional Single-Agent Processing**\n\n"
+            explanation += "**Reasons:**\n"
+            explanation += "- Query is straightforward and doesn't require multi-agent collaboration\n"
+            explanation += "- Can be handled efficiently by core Alita agent\n"
+            explanation += "- May use web search or create/execute MCPs as needed\n"
+        
+        return explanation

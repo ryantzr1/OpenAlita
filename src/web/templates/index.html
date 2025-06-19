@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Alita Chat</title>
+    <title>Alita Chat - Enhanced with LangGraph</title>
     <link
       rel="stylesheet"
       href="{{ url_for('static', filename='style.css') }}"
@@ -14,6 +14,10 @@
       <aside class="sidebar">
         <div class="sidebar-header">
           <span class="sidebar-title">OpenAlita</span>
+          <div class="system-status" id="system-status">
+            <div class="status-indicator" id="status-indicator">●</div>
+            <span class="status-text" id="status-text">Loading...</span>
+          </div>
         </div>
         <nav class="sidebar-nav">
           <a href="#" class="nav-item active">
@@ -30,7 +34,7 @@
                 d="M12 3C6.48 3 2 7.48 2 13s4.48 10 10 10 10-4.48 10-10S17.52 3 12 3zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"
               />
             </svg>
-            Models
+            Multi-Agent
           </a>
           <a href="#" class="nav-item">
             <svg class="nav-icon" viewBox="0 0 24 24">
@@ -63,13 +67,42 @@
 
       <main class="main-content">
         <div class="chat-interface-container">
+          <div class="workflow-controls">
+            <div class="workflow-selector">
+              <label for="workflow-mode">Workflow Mode:</label>
+              <select id="workflow-mode" aria-label="Select workflow mode">
+                <option value="auto">🤖 Auto-Route (Intelligent)</option>
+                <option value="traditional">⚡ Traditional (Fast)</option>
+                <option value="langgraph">
+                  🔄 Multi-Agent (Comprehensive)
+                </option>
+              </select>
+            </div>
+            <button
+              id="explain-routing"
+              class="explain-btn"
+              title="Explain routing decision"
+            >
+              🔍 Explain Routing
+            </button>
+          </div>
+
+          <div
+            id="routing-explanation"
+            class="routing-explanation"
+            style="display: none"
+          >
+            <div class="explanation-content"></div>
+            <button class="close-explanation">✕</button>
+          </div>
+
           <div id="conversation-log" class="conversation-log"></div>
           <div class="input-area-container">
             <div class="input-elements-wrapper">
               <div class="main-input-group">
                 <textarea
                   id="command-input"
-                  placeholder="Ask anything..."
+                  placeholder="Ask anything... (Try complex research questions for multi-agent workflows!)"
                   rows="1"
                   aria-label="Command input"
                 ></textarea>
@@ -89,7 +122,8 @@
               </button>
             </div>
             <div class="footer-text">
-              Alita can make mistakes. Consider checking important information.
+              Alita with LangGraph can handle complex multi-step research and
+              analysis.
             </div>
           </div>
         </div>
@@ -101,12 +135,82 @@
         const conversationLog = document.getElementById("conversation-log");
         const textareaElement = document.getElementById("command-input");
         const sendButton = document.getElementById("send-button");
+        const workflowMode = document.getElementById("workflow-mode");
+        const explainButton = document.getElementById("explain-routing");
+        const routingExplanation = document.getElementById(
+          "routing-explanation"
+        );
 
         if (!conversationLog || !textareaElement || !sendButton) {
           console.error("FATAL UI ERROR: Core elements not found.");
           document.body.innerHTML =
             '<div style="padding:20px;text-align:center;color:red;"><h1>Interface Error</h1><p>Chat components failed to load. Please ensure HTML IDs are correct.</p></div>';
           return;
+        }
+
+        // Load system status
+        async function loadSystemStatus() {
+          try {
+            const response = await fetch("/system_status");
+            const status = await response.json();
+
+            const statusIndicator = document.getElementById("status-indicator");
+            const statusText = document.getElementById("status-text");
+
+            if (status.langgraph_enabled) {
+              statusIndicator.style.color = "#10b981";
+              statusText.textContent = "LangGraph Active";
+              statusIndicator.title = `Available agents: ${status.available_agents.join(
+                ", "
+              )}`;
+            } else {
+              statusIndicator.style.color = "#f59e0b";
+              statusText.textContent = "Traditional Mode";
+            }
+          } catch (error) {
+            console.error("Failed to load system status:", error);
+            const statusIndicator = document.getElementById("status-indicator");
+            const statusText = document.getElementById("status-text");
+            statusIndicator.style.color = "#ef4444";
+            statusText.textContent = "Error";
+          }
+        }
+
+        // Explain routing for current input
+        async function explainRouting() {
+          const command = textareaElement.value.trim();
+          if (!command) {
+            alert("Please enter a query first to see routing explanation.");
+            return;
+          }
+
+          try {
+            const response = await fetch("/explain_routing", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ command: command }),
+            });
+
+            const data = await response.json();
+
+            const explanationContent = routingExplanation.querySelector(
+              ".explanation-content"
+            );
+            explanationContent.innerHTML = `
+              <h3>Routing Analysis</h3>
+              <div class="workflow-badge ${
+                data.uses_langgraph ? "langgraph" : "traditional"
+              }">
+                ${data.workflow_type}
+              </div>
+              <pre>${data.explanation}</pre>
+            `;
+
+            routingExplanation.style.display = "block";
+          } catch (error) {
+            console.error("Failed to explain routing:", error);
+            alert("Failed to get routing explanation.");
+          }
         }
 
         function escapeHtml(text) {
@@ -177,7 +281,7 @@
           const alitaBubble = document.createElement("div");
           alitaBubble.classList.add("message-bubble", "alita-bubble");
           alitaBubble.innerHTML =
-            '<strong>Alita:</strong> <span class="streaming-content">Thinking...</span>';
+            '<strong>Alita:</strong> <span class="streaming-content">Analyzing query and selecting optimal workflow...</span>';
           alitaMessageRow.appendChild(alitaBubble);
           conversationLog.appendChild(alitaMessageRow);
           scrollToBottom();
@@ -188,12 +292,23 @@
           let accumulatedContent = "";
 
           try {
+            // Prepare request body based on workflow mode
+            const requestBody = { command: command };
+            const mode = workflowMode.value;
+
+            if (mode === "traditional") {
+              requestBody.force_traditional = true;
+            } else if (mode === "langgraph") {
+              requestBody.force_langgraph = true;
+            }
+            // 'auto' mode sends no forcing flags
+
             const response = await fetch("/send_command", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify({ command: command }),
+              body: JSON.stringify(requestBody),
             });
 
             if (!response.ok) {
@@ -243,12 +358,16 @@
           }
         }
 
-        const initialSystemPrompt = "{{ system_prompt|safe }}";
-        if (initialSystemPrompt) {
-          appendMessage("Alita", initialSystemPrompt, "system");
-        }
-
+        // Event listeners
         sendButton.addEventListener("click", sendCommand);
+        explainButton.addEventListener("click", explainRouting);
+
+        document
+          .querySelector(".close-explanation")
+          .addEventListener("click", () => {
+            routingExplanation.style.display = "none";
+          });
+
         textareaElement.addEventListener("input", adjustTextareaHeight);
         textareaElement.addEventListener("keydown", function (event) {
           if (
@@ -262,7 +381,16 @@
           }
         });
 
+        // Initialize
+        loadSystemStatus();
         adjustTextareaHeight();
+
+        // Welcome message
+        appendMessage(
+          "Alita",
+          "Welcome! I'm now enhanced with LangGraph multi-agent workflows. Try asking complex research questions or analysis tasks to see the multi-agent system in action!",
+          "system"
+        );
       }, 0);
     </script>
   </body>
