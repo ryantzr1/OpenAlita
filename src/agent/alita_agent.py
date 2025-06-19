@@ -12,8 +12,25 @@ from .mcp_factory import MCPFactory
 from .web_agent import WebAgent
 from .langgraph_workflow import LangGraphWorkflowManager
 
-# Configure logging
+# Enhanced logging configuration for detailed workflow tracking
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('alita_workflow.log')
+    ]
+)
+
+# Configure loggers
 logger = logging.getLogger('alita.agent')
+workflow_logger = logging.getLogger('alita.workflow')
+
+# Set workflow logger to also output to console for real-time monitoring
+workflow_handler = logging.StreamHandler()
+workflow_handler.setFormatter(logging.Formatter('%(asctime)s - WORKFLOW - %(message)s'))
+workflow_logger.addHandler(workflow_handler)
+workflow_logger.setLevel(logging.INFO)
 
 MULTIMEDIA_RESPONSE_PROMPT = "The tool '{tool_name}' has returned a multimedia response."
 
