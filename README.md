@@ -123,7 +123,7 @@ To set up the project with browser automation support:
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/ryantzr1/OpenAlita
 cd Open-Alita
 
 # Install dependencies
