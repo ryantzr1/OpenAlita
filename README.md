@@ -270,14 +270,17 @@ This project is licensed under the MIT License. See the LICENSE file for more de
 
 ## Acknowledgments
 
-We would like to thank the contributors and the community for their support and feedback in developing Open-Alita.
+**🌟 Special Thanks to DeepWisdom**
+
+We extend our deepest gratitude to **[DeepWisdom](https://www.deepwisdom.ai/)** for providing API credits during the development process. Their generous support has been absolutely crucial in making Open-Alita possible - huge huge huge thanks! 🙏
 
 **Special thanks to:**
 
-- **[DeepWisdom](https://www.deepwisdom.ai/)** for providing API credits during the development process - huge huge huge thanks!
 - [browser-use](https://github.com/browser-use/browser-use) for powerful browser automation capabilities
 - [LangGraph](https://github.com/langchain-ai/langgraph) for workflow orchestration
 - [Model Context Protocol](https://modelcontextprotocol.io/) for dynamic tool creation
+
+We would like to thank the contributors and the community for their support and feedback in developing Open-Alita.
 
 ## GAIA Testing
 
