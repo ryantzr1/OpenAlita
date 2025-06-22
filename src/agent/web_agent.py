@@ -123,15 +123,31 @@ Response:"""
         # Everything else can potentially be handled by search
         return "YES"
     
-    def search_web(self, query: str, num_results: int = 5) -> List[Dict[str, Any]]:
-        """Search the web using Firecrawl search API or fallback methods."""
+    def search_web(self, query: str, num_results: int = 5, follow_up: bool = True) -> List[Dict[str, Any]]:
+        """Enhanced web search with content analysis and follow-up searches."""
+        # Initial search
         if self.firecrawl_api_key:
             results = self._search_with_firecrawl_api(query, num_results)
             if results:
-                return results
+                # Analyze and enhance results
+                enhanced_results = self._analyze_and_enhance_results(results, query)
+                
+                # Do follow-up searches if needed and enabled
+                if follow_up and len(enhanced_results) < num_results:
+                    follow_up_results = self._perform_follow_up_searches(query, enhanced_results)
+                    enhanced_results.extend(follow_up_results)
+                
+                return enhanced_results[:num_results]
         
         # Fall back to basic search if Firecrawl API fails or isn't available
-        return self._fallback_search(query, num_results)
+        basic_results = self._fallback_search(query, num_results)
+        if follow_up and basic_results:
+            enhanced_results = self._analyze_and_enhance_results(basic_results, query)
+            follow_up_results = self._perform_follow_up_searches(query, enhanced_results)
+            enhanced_results.extend(follow_up_results)
+            return enhanced_results[:num_results]
+        
+        return basic_results
     
     def _search_with_firecrawl_api(self, query: str, num_results: int) -> List[Dict[str, Any]]:
         """Search using Firecrawl's search API endpoint with content scraping."""
@@ -298,6 +314,175 @@ Response:"""
             
         except Exception as e:
             print(f"Search scraping error: {e}")
+            return []
+
+    def _analyze_and_enhance_results(self, results: List[Dict[str, Any]], original_query: str) -> List[Dict[str, Any]]:
+        """Analyze search results and enhance them with better content extraction."""
+        enhanced_results = []
+        
+        for result in results:
+            try:
+                # Add relevance scoring
+                relevance_score = self._calculate_relevance_score(result, original_query)
+                result['relevance_score'] = relevance_score
+                
+                # Enhance content with summary if it's too long
+                content = result.get('content', '')
+                if len(content) > 500:
+                    result['summary'] = self._summarize_content(content, original_query)
+                
+                # Add source credibility assessment
+                result['credibility_score'] = self._assess_source_credibility(result.get('url', ''))
+                
+                enhanced_results.append(result)
+                
+            except Exception as e:
+                print(f"Error enhancing result: {e}")
+                enhanced_results.append(result)  # Keep original if enhancement fails
+        
+        # Sort by relevance and credibility
+        enhanced_results.sort(key=lambda x: (x.get('relevance_score', 0) + x.get('credibility_score', 0)) / 2, reverse=True)
+        return enhanced_results
+    
+    def _calculate_relevance_score(self, result: Dict[str, Any], query: str) -> float:
+        """Calculate relevance score for a search result."""
+        try:
+            title = result.get('title', '').lower()
+            content = result.get('content', '').lower()
+            query_lower = query.lower()
+            
+            # Simple keyword matching score
+            query_words = set(query_lower.split())
+            title_words = set(title.split())
+            content_words = set(content.split())
+            
+            # Calculate overlap
+            title_overlap = len(query_words.intersection(title_words)) / len(query_words) if query_words else 0
+            content_overlap = len(query_words.intersection(content_words)) / len(query_words) if query_words else 0
+            
+            # Weight title higher than content
+            return (title_overlap * 0.7 + content_overlap * 0.3)
+            
+        except Exception:
+            return 0.5  # Default score
+    
+    def _summarize_content(self, content: str, query: str) -> str:
+        """Summarize long content using LLM."""
+        if len(content) <= 300:
+            return content
+            
+        try:
+            summary_prompt = f"""Summarize this content in relation to the query: "{query}"
+
+Content: {content[:1500]}...
+
+Provide a concise summary (2-3 sentences) that directly relates to the query."""
+            
+            summary_chunks = []
+            for chunk in self.llm_provider._make_api_call(summary_prompt):
+                if isinstance(chunk, str) and not chunk.startswith("Error:"):
+                    summary_chunks.append(chunk)
+            
+            summary = "".join(summary_chunks).strip()
+            return summary if summary else content[:300] + "..."
+            
+        except Exception:
+            return content[:300] + "..."
+    
+    def _assess_source_credibility(self, url: str) -> float:
+        """Assess the credibility of a source based on domain."""
+        if not url:
+            return 0.5
+            
+        try:
+            from urllib.parse import urlparse
+            domain = urlparse(url).netloc.lower()
+            
+            # High credibility domains
+            high_credibility = [
+                'wikipedia.org', 'reuters.com', 'bbc.com', 'cnn.com', 'nytimes.com',
+                'wsj.com', 'ft.com', 'bloomberg.com', 'npr.org', 'pbs.org',
+                'gov', 'edu', 'nature.com', 'science.org', 'who.int'
+            ]
+            
+            # Medium credibility domains
+            medium_credibility = [
+                'techcrunch.com', 'wired.com', 'arstechnica.com', 'theverge.com',
+                'forbes.com', 'businessinsider.com', 'medium.com'
+            ]
+            
+            for domain_check in high_credibility:
+                if domain_check in domain:
+                    return 0.9
+                    
+            for domain_check in medium_credibility:
+                if domain_check in domain:
+                    return 0.7
+                    
+            return 0.5  # Default credibility
+            
+        except Exception:
+            return 0.5
+    
+    def _perform_follow_up_searches(self, original_query: str, existing_results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Perform targeted follow-up searches based on gaps in existing results."""
+        try:
+            # Analyze existing results to identify gaps
+            gap_analysis_prompt = f"""Analyze these search results for the query "{original_query}" and identify information gaps.
+
+Query: {original_query}
+
+Existing Results Summary:
+{json.dumps([{'title': r.get('title', ''), 'summary': r.get('content', '')[:200]} for r in existing_results[:3]], indent=2)}
+
+What additional search queries (1-2 specific queries) would help fill information gaps? Focus on:
+- Different angles or aspects not covered
+- More recent/specific information
+- Verification from different sources
+
+Respond with JSON:
+{{"follow_up_queries": ["query1", "query2"]}}"""
+
+            response_chunks = []
+            for chunk in self.llm_provider._make_api_call(gap_analysis_prompt):
+                if isinstance(chunk, str) and not chunk.startswith("Error:"):
+                    response_chunks.append(chunk)
+            
+            response = "".join(response_chunks)
+            
+            # Parse follow-up queries
+            follow_up_queries = []
+            try:
+                json_start = response.find('{')
+                json_end = response.rfind('}') + 1
+                if json_start >= 0 and json_end > json_start:
+                    json_str = response[json_start:json_end]
+                    data = json.loads(json_str)
+                    follow_up_queries = data.get("follow_up_queries", [])
+            except Exception:
+                follow_up_queries = []
+            
+            # Perform follow-up searches
+            follow_up_results = []
+            for query in follow_up_queries[:2]:  # Limit to 2 follow-up searches
+                try:
+                    if self.firecrawl_api_key:
+                        results = self._search_with_firecrawl_api(query, 2)
+                    else:
+                        results = self._fallback_search(query, 2)
+                    
+                    for result in results:
+                        result['search_type'] = 'follow_up'
+                        result['original_query'] = query
+                    
+                    follow_up_results.extend(results)
+                except Exception as e:
+                    print(f"Follow-up search error for '{query}': {e}")
+            
+            return follow_up_results
+            
+        except Exception as e:
+            print(f"Follow-up search analysis error: {e}")
             return []
 
     def answer_query(self, query: str) -> Optional[str]:

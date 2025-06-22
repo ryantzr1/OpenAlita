@@ -1,19 +1,20 @@
 import os
 import json
+import logging
+import requests
 from dotenv import load_dotenv
-import litellm
 
 class LLMProvider:
     """Placeholder for interacting with an LLM API like DeepSeek."""
     
     def __init__(self, api_key=None, api_url=None):
         load_dotenv()
-        # Use OpenAI key + endpoint by default (litellm will route correctly)
-        self.api_key = api_key if api_key else os.getenv("OPENAI_API_KEY")
-        self.api_url = api_url if api_url else os.getenv("OPENAI_API_BASE")  # optional
+        # Use DeepWisdom API endpoint with Claude
+        self.deepwisdom_api_key = api_key if api_key else os.getenv("DEEPWISDOM_API_KEY")
+        self.api_url = api_url if api_url else "https://oneapi.deepwisdom.ai/v1"
 
-        # Default to an OpenAI chat model; can be changed via env var
-        self.model_name = os.getenv("LLM_MODEL_NAME", "gpt-4o-mini")
+        # Default to Claude 3.5 Sonnet; can be changed via env var
+        self.model_name = os.getenv("LLM_MODEL_NAME", "claude-3-5-sonnet-20241022")
         
         # Store the last generated script for retrieval
         self.last_generated_script = None
@@ -79,7 +80,7 @@ class LLMProvider:
     def _build_mcp_generation_prompt(self, mcp_name, task_description, args_details, user_command):
         """Build a comprehensive prompt for MCP script generation."""
         
-        prompt = f"""You are an expert Python developer tasked with creating a Micro Control Program (MCP) function.
+        prompt = f"""You are an expert Python developer tasked with creating a Module Context Protocol (MCP) function.
 
 MCP Name to define: {mcp_name}
 
@@ -90,6 +91,13 @@ Arguments Details: {args_details}
 Original User Command: {user_command}
 
 CRITICAL: You MUST generate a REUSABLE, PARAMETERIZED function that gets the current command dynamically. DO NOT hardcode any command strings.
+
+IMPORTANT FUNCTION NAMING RULES:
+- Use ONLY ASCII characters (a-z, A-Z, 0-9, underscore)
+- NO Unicode characters, special symbols, or punctuation
+- NO spaces, hyphens, or special characters in function names
+- Use snake_case naming convention
+- Keep names descriptive but concise
 
 Please generate a complete, functional Python MCP script that:
 
@@ -180,45 +188,82 @@ Please generate a complete, functional Python MCP script that:
    name = name_words[0] if name_words else "friend"
    ```
 
+CRITICAL FUNCTION NAMING REQUIREMENTS:
+- Use ONLY: a-z, A-Z, 0-9, underscore (_)
+- NO: spaces, hyphens, apostrophes, quotes, or special characters
+- NO: Unicode characters like curly quotes (', ') or dashes (–, —)
+- Examples of GOOD names: calculate_area, get_weather, analyze_data
+- Examples of BAD names: calculate-area, get'weather, analyze–data
+
 IMPORTANT: 
 - Generate ONLY the complete MCP script
 - ALWAYS use `current_command = getattr(builtins, '_current_user_command', '')` to get the current command
 - DO NOT hardcode any command strings or parameters
 - Make the function truly reusable for different commands with different parameters
+- Use ONLY ASCII characters in function names
 """
 
         return prompt
     
     def _make_api_call(self, prompt_text):
-        """Stream completion tokens using LiteLLM (defaults to OpenAI provider)."""
-
+        """Make direct API call to DeepWisdom Claude endpoint with streaming."""
+        
+        headers = {
+            "Authorization": f"Bearer {self.deepwisdom_api_key}",
+            "Content-Type": "application/json",
+            "Accept": "text/event-stream"
+        }
+        
+        payload = {
+            "model": self.model_name,
+            "messages": [{"role": "user", "content": prompt_text}],
+            "temperature": 0.5,
+            "max_tokens": 3000,
+            "stream": True
+        }
+        
         try:
-            response_stream = litellm.completion(
-                model=self.model_name,
-                messages=[{"role": "user", "content": prompt_text}],
-                api_key=self.api_key,
-                api_base=self.api_url,
-                temperature=0.5,
-                max_tokens=3000,
+            response = requests.post(
+                f"{self.api_url}/chat/completions",
+                headers=headers,
+                json=payload,
                 stream=True,
+                timeout=60
             )
-
-            for chunk in response_stream:
-                # LiteLLM returns either object or dict depending on version/provider
-                delta_text = None
-                try:
-                    delta_text = chunk.choices[0].delta.content  # type: ignore[attr-defined]
-                except AttributeError:
-                    try:
-                        delta_text = chunk["choices"][0].get("delta", {}).get("content")
-                    except (KeyError, TypeError):
-                        delta_text = None
-
-                if delta_text:
-                    yield delta_text
-
+            
+            if response.status_code != 200:
+                yield f"Error: API request failed with status {response.status_code}: {response.text}"
+                return
+            
+            # Parse streaming response
+            for line in response.iter_lines():
+                if line:
+                    line_text = line.decode('utf-8')
+                    if line_text.startswith('data: '):
+                        data_part = line_text[6:]  # Remove 'data: ' prefix
+                        
+                        if data_part.strip() == '[DONE]':
+                            break
+                            
+                        try:
+                            chunk_data = json.loads(data_part)
+                            choices = chunk_data.get('choices', [])
+                            
+                            if choices and len(choices) > 0:
+                                delta = choices[0].get('delta', {})
+                                content = delta.get('content', '')
+                                
+                                if content:
+                                    yield content
+                                    
+                        except json.JSONDecodeError:
+                            # Skip malformed JSON chunks
+                            continue
+                            
+        except requests.exceptions.RequestException as e:
+            yield f"Error: Network request failed - {str(e)}"
         except Exception as e:
-            yield f"Error: LLM request failed - {str(e)}"
+            yield f"Error: API call failed - {str(e)}"
 
     def parse_intent(self, user_command):
         """Use the LLM to parse user intent and extract action/args from natural language."""

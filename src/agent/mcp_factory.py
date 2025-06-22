@@ -2,6 +2,8 @@ import re
 import sys
 import logging
 import traceback
+import subprocess
+import importlib
 from typing import Dict, Any, Tuple, Optional, Callable
 
 
@@ -9,16 +11,116 @@ from typing import Dict, Any, Tuple, Optional, Callable
 logger = logging.getLogger('alita.mcp_factory')
 
 class MCPFactory:
-    """Factory for creating MCP functions from LLM-generated scripts."""
+    """Factory for creating MCP functions from LLM-generated scripts with automatic package installation."""
     
     def __init__(self):
-        # Whitelist of safe modules that can be imported
-        self.safe_modules = {
-            'datetime', 'time', 'json', 'math', 'random', 'uuid', 'hashlib',
-            'base64', 'urllib.parse', 'urllib.request', 'requests', 'os', 're'
-        }
-        logger.info("MCPFactory initialized with safe modules whitelist")
+        logger.info("MCPFactory initialized with automatic package installation support")
     
+    def _install_package(self, package_name: str) -> bool:
+        """Install a package using uv if it's not available."""
+        try:
+            # Validate package name - skip if it's not a valid package name
+            if not package_name or package_name.strip() == "":
+                logger.debug(f"Skipping empty package name")
+                return False
+                
+            # Skip common non-package strings that LLMs might generate
+            invalid_packages = [
+                "no external modules required",
+                "none",
+                "n/a",
+                "not required",
+                "no requirements",
+                "built-in",
+                "standard library",
+                "no dependencies"
+            ]
+            
+            if package_name.lower().strip() in [p.lower() for p in invalid_packages]:
+                logger.debug(f"Skipping invalid package name: '{package_name}'")
+                return False
+                
+            # Check if it looks like a valid package name (basic validation)
+            if not re.match(r'^[a-zA-Z0-9_-]+$', package_name):
+                logger.debug(f"Skipping invalid package name format: '{package_name}'")
+                return False
+            
+            logger.info(f"Attempting to install package: {package_name}")
+            
+            # Try uv first (faster)
+            result = subprocess.run(
+                ["uv", "add", package_name],
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+            
+            if result.returncode == 0:
+                logger.info(f"Successfully installed {package_name} with uv")
+                return True
+            else:
+                logger.warning(f"uv installation failed for {package_name}: {result.stderr}")
+                
+                # Fallback to pip
+                result = subprocess.run(
+                    [sys.executable, "-m", "pip", "install", package_name],
+                    capture_output=True,
+                    text=True,
+                    timeout=60
+                )
+                
+                if result.returncode == 0:
+                    logger.info(f"Successfully installed {package_name} with pip")
+                    return True
+                else:
+                    logger.error(f"pip installation also failed for {package_name}: {result.stderr}")
+                    return False
+                    
+        except subprocess.TimeoutExpired:
+            logger.error(f"Installation timeout for package: {package_name}")
+            return False
+        except Exception as e:
+            logger.error(f"Error installing package {package_name}: {e}")
+            return False
+    
+    def _import_with_auto_install(self, module_name: str) -> Optional[Any]:
+        """Try to import a module, installing it automatically if not found."""
+        try:
+            # Try importing directly first
+            module = importlib.import_module(module_name)
+            logger.debug(f"Successfully imported {module_name}")
+            return module
+        except ImportError:
+            logger.info(f"Module {module_name} not found, attempting to install...")
+            
+            # Common package name mappings
+            package_mappings = {
+                'cv2': 'opencv-python',
+                'PIL': 'Pillow',
+                'sklearn': 'scikit-learn',
+                'bs4': 'beautifulsoup4',
+                'yaml': 'PyYAML',
+                'requests_html': 'requests-html',
+                'dateutil': 'python-dateutil'
+            }
+            
+            # Determine package name
+            package_name = package_mappings.get(module_name, module_name)
+            
+            # Try to install the package
+            if self._install_package(package_name):
+                try:
+                    # Try importing again after installation  
+                    module = importlib.import_module(module_name)
+                    logger.info(f"Successfully imported {module_name} after installation")
+                    return module
+                except ImportError as e:
+                    logger.error(f"Failed to import {module_name} even after installation: {e}")
+                    return None
+            else:
+                logger.error(f"Failed to install package for module: {module_name}")
+                return None
+
     def create_mcp_from_script(self, function_name: str, script_content: str) -> Tuple[Optional[Callable], Dict[str, Any]]:
         """
         Create an MCP function from a script string.
@@ -195,19 +297,41 @@ def {function_name}(*args, **kwargs):
                 if in_code_block or '```' not in script_content:
                     cleaned_lines.append(line)
             
-            # Now process the cleaned lines to remove metadata comments
+            # Now process the cleaned lines to remove metadata comments and obvious example code
             code_lines = []
             metadata_lines = []
             
             for line in cleaned_lines:
+                line_stripped = line.strip()
+                
                 # Track metadata comments separately
-                if line.strip().startswith('# MCP Name:') or \
-                   line.strip().startswith('# Description:') or \
-                   line.strip().startswith('# Arguments:') or \
-                   line.strip().startswith('# Returns:') or \
-                   line.strip().startswith('# Requires:'):
+                if line_stripped.startswith('# MCP Name:') or \
+                   line_stripped.startswith('# Description:') or \
+                   line_stripped.startswith('# Arguments:') or \
+                   line_stripped.startswith('# Returns:') or \
+                   line_stripped.startswith('# Requires:'):
                     metadata_lines.append(line)
                     continue
+                
+                # Skip obvious example code and test cases
+                if any(keyword in line_stripped.lower() for keyword in [
+                    'example usage:', 'test with', 'output:', 'if __name__', 'main()', 'test_', 'example:'
+                ]):
+                    continue
+                
+                # Skip standalone print statements that are clearly examples
+                if line_stripped.startswith('print(') and any(keyword in line_stripped.lower() for keyword in [
+                    'output', 'result', 'example', 'test'
+                ]):
+                    continue
+                
+                # Skip result assignments that are clearly examples
+                if line_stripped.startswith('result =') and any(keyword in line_stripped.lower() for keyword in [
+                    'output', 'example', 'test'
+                ]):
+                    continue
+                
+                # Include everything else (be more conservative)
                 code_lines.append(line)
             
             cleaned_script = '\n'.join(code_lines).strip()
@@ -254,115 +378,147 @@ def {function_name}(*args, **kwargs):
                 logger.error(f"Script has syntax error at line {e.lineno}: {e.msg}")
                 logger.error(f"Problematic line: {e.text}")
                 logger.error(f"Full script being compiled:\n{cleaned_script}")
+                
+                # Try to fix common syntax errors
+                logger.info("Attempting to fix common syntax errors...")
+                fixed_script = self._fix_common_syntax_errors(cleaned_script)
+                if fixed_script:
+                    try:
+                        compile(fixed_script, '<string>', 'exec')
+                        logger.info("Script compiled successfully after fixing syntax errors")
+                        return fixed_script
+                    except SyntaxError as e2:
+                        logger.error(f"Still has syntax error after fixing: {e2}")
+                        return None
                 return None
                 
         except Exception as e:
             logger.error(f"Error cleaning script: {e}", exc_info=True)
             return None
     
+    def _fix_common_syntax_errors(self, script: str) -> Optional[str]:
+        """Fix common syntax errors in generated scripts."""
+        try:
+            lines = script.split('\n')
+            fixed_lines = []
+            i = 0
+            
+            while i < len(lines):
+                line = lines[i]
+                line_stripped = line.strip()
+                
+                # Skip lines that look like example code with syntax errors
+                if 'print(' in line and ('"' in line or "'" in line):
+                    # Count quotes to see if they're balanced
+                    single_quotes = line.count("'")
+                    double_quotes = line.count('"')
+                    
+                    # If quotes are unbalanced, skip this line (it's likely example code)
+                    if single_quotes % 2 != 0 or double_quotes % 2 != 0:
+                        logger.debug(f"Skipping line with unbalanced quotes: {line}")
+                        i += 1
+                        continue
+                
+                # Handle unterminated docstrings
+                if '"""' in line:
+                    # Count triple quotes in this line
+                    triple_quotes = line.count('"""')
+                    if triple_quotes % 2 != 0:
+                        # Unterminated docstring - find the end
+                        logger.debug(f"Found unterminated docstring in line: {line}")
+                        fixed_lines.append(line)
+                        i += 1
+                        
+                        # Look for the closing triple quotes
+                        while i < len(lines):
+                            next_line = lines[i]
+                            fixed_lines.append(next_line)
+                            if '"""' in next_line:
+                                # Found closing docstring
+                                break
+                            i += 1
+                        continue
+                
+                fixed_lines.append(line)
+                i += 1
+            
+            return '\n'.join(fixed_lines)
+            
+        except Exception as e:
+            logger.error(f"Error fixing syntax errors: {e}")
+            return None
+    
     def _create_safe_globals(self, requires: str) -> Dict[str, Any]:
-        """Create a safe global environment for script execution."""
+        """Create a flexible global environment with automatic package installation."""
+        # Full Python builtins - no restrictions
+        import builtins
         safe_globals = {
-            '__builtins__': {
-                'len': len,
-                'str': str,
-                'int': int,
-                'float': float,
-                'bool': bool,
-                'list': list,
-                'dict': dict,
-                'tuple': tuple,
-                'set': set,
-                'range': range,
-                'enumerate': enumerate,
-                'zip': zip,
-                'map': map,
-                'filter': filter,
-                'sum': sum,
-                'min': min,
-                'max': max,
-                'abs': abs,
-                'round': round,
-                'sorted': sorted,
-                'reversed': reversed,
-                'print': print,
-                'Exception': Exception,
-                'ValueError': ValueError,
-                'TypeError': TypeError,
-                'KeyError': KeyError,
-                'IndexError': IndexError,
-                'AttributeError': AttributeError,
-                '__import__': __import__,
-                'hasattr': hasattr,
-                'getattr': getattr,
-                'setattr': setattr,
-                'isinstance': isinstance,
-                'type': type,
-                'all': all,
-                'any': any,
-                'iter': iter,
-                'next': next,
-                'chr': chr,
-                'ord': ord,
-            }
+            '__builtins__': builtins.__dict__.copy()
         }
         
-        logger.debug(f"Creating safe globals with required modules: {requires}")
+        logger.debug(f"Creating globals with auto-install for required modules: {requires}")
         
-        # Add safe modules based on requirements
+        # Add required modules with automatic installation
         if requires:
-            required_modules = [mod.strip() for mod in requires.split(',')]
-            for module_name in required_modules:
-                if module_name in self.safe_modules:
-                    try:
-                        if module_name == 'datetime':
-                            import datetime
-                            safe_globals['datetime'] = datetime
-                        elif module_name == 'time':
-                            import time
-                            safe_globals['time'] = time
-                        elif module_name == 'json':
-                            import json
-                            safe_globals['json'] = json
-                        elif module_name == 'math':
-                            import math
-                            safe_globals['math'] = math
-                        elif module_name == 'random':
-                            import random
-                            safe_globals['random'] = random
-                        elif module_name == 'uuid':
-                            import uuid
-                            safe_globals['uuid'] = uuid
-                        elif module_name == 'hashlib':
-                            import hashlib
-                            safe_globals['hashlib'] = hashlib
-                        elif module_name == 'base64':
-                            import base64
-                            safe_globals['base64'] = base64
-                        elif module_name == 'urllib.parse':
-                            import urllib.parse
-                            safe_globals['urllib'] = __import__('urllib')
-                        elif module_name == 'urllib.request':
-                            import urllib.request
-                            safe_globals['urllib'] = __import__('urllib')
-                        elif module_name == 'requests':
-                            import requests
-                            safe_globals['requests'] = requests
-                        elif module_name == 'os':
-                            import os
-                            # Only provide safe os functions
-                            safe_globals['os'] = type('SafeOS', (), {
-                                'path': os.path,
-                                'getcwd': os.getcwd,
-                                'listdir': os.listdir,
-                                'environ': os.environ,
-                            })()
-                        elif module_name == 're':
-                            import re
-                            safe_globals['re'] = re
-                        
-                        logger.debug(f"Added {module_name} to safe globals")
-                    except ImportError:
-                        logger.warning(f"Could not import required module '{module_name}'")
+            # Clean and validate the requires string
+            requires_clean = requires.strip()
+            
+            # Skip if it's a common non-module string
+            invalid_requires = [
+                "no external modules required",
+                "none",
+                "n/a",
+                "not required",
+                "no requirements",
+                "built-in",
+                "standard library",
+                "no dependencies"
+            ]
+            
+            if requires_clean.lower() in [r.lower() for r in invalid_requires]:
+                logger.debug(f"Skipping invalid requires field: '{requires_clean}'")
+            else:
+                # Parse comma-separated modules
+                required_modules = []
+                for mod in requires_clean.split(','):
+                    mod_clean = mod.strip()
+                    if mod_clean and mod_clean.lower() not in [r.lower() for r in invalid_requires]:
+                        required_modules.append(mod_clean)
+                
+                logger.debug(f"Valid modules to import: {required_modules}")
+                
+                for module_name in required_modules:
+                    logger.debug(f"Attempting to import/install module: {module_name}")
+                    
+                    # Handle special cases for submodules
+                    if '.' in module_name:
+                        # For modules like urllib.parse, requests.auth, etc.
+                        base_module = module_name.split('.')[0]
+                        module = self._import_with_auto_install(base_module)
+                        if module:
+                            safe_globals[base_module] = module
+                            # Also try to import the specific submodule
+                            try:
+                                submodule = importlib.import_module(module_name)
+                                # Add submodule with full path name
+                                safe_globals[module_name.replace('.', '_')] = submodule
+                            except ImportError:
+                                logger.warning(f"Could not import submodule {module_name}")
+                    else:
+                        # Regular module import with auto-install
+                        module = self._import_with_auto_install(module_name)
+                        if module:
+                            safe_globals[module_name] = module
+                        else:
+                            logger.warning(f"Failed to import/install module: {module_name}")
         
+        # Always include commonly used modules
+        common_modules = ['os', 're', 'sys', 'json', 'datetime', 'time', 'math', 'random']
+        for module_name in common_modules:
+            if module_name not in safe_globals:
+                module = self._import_with_auto_install(module_name)
+                if module:
+                    safe_globals[module_name] = module
+        
+        logger.info(f"Created globals environment with {len(safe_globals)} available modules")
         return safe_globals
