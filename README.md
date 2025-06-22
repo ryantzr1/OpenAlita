@@ -165,48 +165,6 @@ python web_app.py
 
 This will start the server on `http://127.0.0.1:5001/`.
 
-### Command Line
-
-To run the agent in command-line mode:
-
-```bash
-python -m src.prompt.mcp
-```
-
-### Testing Browser Automation
-
-Test the browser automation integration:
-
-```bash
-python test_browser_automation.py
-```
-
-## Examples
-
-### Browser Automation Tasks
-
-```bash
-# Video and visual content
-"Watch the latest YouTube video about AI"
-"Take a screenshot of the current weather"
-
-# Interactive websites
-"Login to my GitHub account and list repositories"
-"Fill out the contact form on a website"
-
-# E-commerce
-"Search for laptops on Amazon and add to cart"
-"Compare smartphone prices across stores"
-
-# Social media
-"Post a status update on LinkedIn"
-"Check Twitter notifications and respond"
-
-# Complex workflows
-"Apply for software engineering jobs on LinkedIn"
-"Download and install VS Code"
-```
-
 ### Web Search Tasks
 
 ```bash
