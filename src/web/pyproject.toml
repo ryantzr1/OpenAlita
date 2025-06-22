@@ -1,0 +1,16 @@
+[project]
+name = "web"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "beautifulsoup4>=4.13.4",
+    "google-api-python-client>=2.173.0",
+    "none>=0.1.1",
+    "opencv-python>=4.11.0.86",
+    "pytesseract>=0.3.13",
+    "pytube>=15.0.0",
+    "tensorflow>=2.19.0",
+    "youtube-dl>=2021.12.17",
+]
