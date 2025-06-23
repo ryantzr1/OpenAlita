@@ -15,6 +15,9 @@ class State(MessagesState):
     iteration_count: int = 0
     max_iterations: int = 5
     
+    # Image files - shared across all nodes
+    image_files: List[str] = []
+    
     # Agent outputs
     coordinator_analysis: Dict[str, Any] = {}
     web_search_results: List[Dict[str, Any]] = []

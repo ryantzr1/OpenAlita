@@ -60,11 +60,20 @@ class LangGraphCoordinator:
     def process_query_streaming(self, query: str) -> Generator[str, None, None]:
         """Process a query through the LangGraph workflow with streaming output"""
         
+        # Detect image files for the entire workflow
+        import os
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        gaia_files_dir = os.path.join(project_root, "gaia_files")
+        image_files = []
+        if os.path.exists(gaia_files_dir):
+            image_files = [os.path.join(gaia_files_dir, f) for f in os.listdir(gaia_files_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff'))]
+        
         # Initialize state
         initial_state = {
             "original_query": query,
             "messages": [],
-            "streaming_chunks": []
+            "streaming_chunks": [],
+            "image_files": image_files  # Include image files in initial state
         }
         
         # Create unique thread ID

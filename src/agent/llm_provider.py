@@ -100,6 +100,13 @@ IMPORTANT FUNCTION NAMING RULES:
 - Use snake_case naming convention
 - Keep names descriptive but concise
 
+VISION TASK GUIDELINES:
+- **DO NOT** import or use openai, PIL, or other external vision libraries
+- **DO NOT** try to access image files directly or make API calls
+- **DO** return a description of what the tool would analyze or extract
+- **DO** mention that the system's built-in vision capabilities will handle the actual image processing
+- The system already has vision capabilities built into LLMProvider that can analyze images automatically
+
 Please generate a complete, functional Python MCP script that:
 
 1. **Follows this exact format structure:**
@@ -169,7 +176,26 @@ Please generate a complete, functional Python MCP script that:
            return f"Error in github_stars: {{str(e)}}"
    ```
 
-4. **Other Parameter Extraction Examples:**
+4. **Vision Task Example:**
+   ```python
+   def image_analyzer():
+       import builtins
+       
+       try:
+           # Get the current command from global context
+           current_command = getattr(builtins, '_current_user_command', '')
+           if not current_command:
+               return "Error: No command provided"
+           
+           # Return description of what would be analyzed
+           # The system's built-in vision capabilities will handle the actual image processing
+           return "This tool would analyze the image to extract fractions with '/' symbols and their corresponding answers, maintaining the order of appearance as requested in the command."
+               
+       except Exception as e:
+           return f"Error in image_analyzer: {{str(e)}}"
+   ```
+
+5. **Other Parameter Extraction Examples:**
 
    For weather queries:
    ```python
@@ -202,6 +228,7 @@ IMPORTANT:
 - DO NOT hardcode any command strings or parameters
 - Make the function truly reusable for different commands with different parameters
 - Use ONLY ASCII characters in function names
+- For vision tasks: Return descriptions, not implementation details
 """
 
         return prompt
@@ -363,3 +390,14 @@ Respond ONLY with a JSON object in this exact format:
                 
         except Exception as e:
             return None, []
+
+    def simple_completion(self, prompt, image_files=None):
+        """
+        Get a single string completion from the LLM (non-streaming).
+        """
+        response_chunks = []
+        for chunk in self._make_api_call(prompt, image_files):
+            if isinstance(chunk, str) and chunk.startswith("Error:"):
+                raise RuntimeError(chunk)
+            response_chunks.append(chunk)
+        return "".join(response_chunks).strip()

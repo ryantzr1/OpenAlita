@@ -14,7 +14,8 @@ from dotenv import load_dotenv
 
 from ..llm_provider import LLMProvider
 from ..web_agent import WebAgent
-from ..mcp_agent import MCPAgent
+from ..mcp_factory import MCPFactory
+from ..mcp_registry import MCPRegistry
 from ..prompts import (
     COORDINATOR_ANALYSIS_PROMPT,
     TARGETED_SEARCH_PROMPT,
@@ -51,224 +52,175 @@ def coordinator_node(state: State) -> Command[Literal["web_agent", "mcp_agent", 
             goto="synthesizer"
         )
     
-    # Check if we have image files - but don't automatically route to synthesizer
-    # Use absolute path to gaia_files directory
-    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-    gaia_files_dir = os.path.join(project_root, "gaia_files")
-    image_files = []
-    if os.path.exists(gaia_files_dir):
-        image_files = [f for f in os.listdir(gaia_files_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff'))]
-        if image_files:
-            logger.info(f"Found image files: {image_files}")
+    # Get image files from state
+    image_files = state.get("image_files", [])
     
     # Build context about what we've already done
     web_results = state.get("web_search_results", [])
     mcp_results = state.get("mcp_execution_results", [])
     previous_analysis = state.get("coordinator_analysis", {})
     
-    # Analyze quality and gaps in existing information
-    information_analysis = ""
-    if web_results:
-        high_quality_results = [r for r in web_results if r.get('credibility_score', 0.5) > 0.7]
-        information_analysis += f"High-quality web sources: {len(high_quality_results)}/{len(web_results)}\n"
-        
-        # Check for recent information
-        recent_indicators = ['2024', '2023', 'latest', 'recent', 'today', 'current']
-        recent_results = [r for r in web_results if any(indicator in r.get('content', '').lower() for indicator in recent_indicators)]
-        information_analysis += f"Recent information sources: {len(recent_results)}/{len(web_results)}\n"
+    # Intelligent context-aware routing based on what we've already tried
+    chunks = [f"🧠 **Coordinator:** Analyzing query and previous attempts..."]
     
-    if mcp_results:
-        information_analysis += f"Computational results: {len(mcp_results)} tools executed\n"
+    # Add vision context if images are available
+    if image_files:
+        chunks.append(f"🖼️ **Vision enabled:** {len(image_files)} images detected")
     
-    context_summary = f"""
-Current iteration: {iteration + 1}/{max_iterations}
-Previous actions: {previous_analysis.get('next_action', 'None')}
-
-INFORMATION QUALITY ANALYSIS:
-{information_analysis}
-
-SEARCH RESULTS SUMMARY:
-{json.dumps([{'title': r.get('title', ''), 'credibility': r.get('credibility_score', 0.5), 'type': r.get('search_type', 'original')} for r in web_results[:3]], indent=2) if web_results else "No web results yet"}
-"""
+    # Check if we already have substantial results
+    has_web_results = len(web_results) > 0
+    has_mcp_results = len(mcp_results) > 0
+    has_browser_results = any("browser automation" in str(result) for result in mcp_results)
     
-    # Check for image files
-    has_image_files = len(image_files) > 0
-    image_files_info = f"Images available: {', '.join(image_files)}" if image_files else "No image files detected"
+    # Analyze what we've already tried
+    previous_actions = []
+    if previous_analysis:
+        previous_actions.append(previous_analysis.get("next_action", "unknown"))
     
-    # Create analysis prompt for LLM
-    analysis_prompt = COORDINATOR_ANALYSIS_PROMPT.format(
-        query=query,
-        context_summary=context_summary,
-        has_image_files=has_image_files,
-        image_files_info=image_files_info,
-        web_results_summary=json.dumps(web_results[:2], indent=2) if web_results else "No web results yet",
-        mcp_results_summary=chr(10).join(mcp_results[:2]) if mcp_results else "No tool results yet"
-    )
+    chunks.append(f"📊 **Previous attempts:** {len(previous_actions)} iterations")
+    if has_web_results:
+        chunks.append(f"🌐 **Web results:** {len(web_results)} found")
+    if has_mcp_results:
+        chunks.append(f"🛠️ **Tool results:** {len(mcp_results)} executed")
+    if has_browser_results:
+        chunks.append(f"🌐 **Browser automation:** Already attempted")
     
-    try:
-        # Get LLM analysis
-        analysis_response = ""
-        for chunk in llm_provider._make_api_call(analysis_prompt):
-            analysis_response += chunk
-        
-        # Parse the JSON response
-        try:
-            json_start = analysis_response.find('{')
-            json_end = analysis_response.rfind('}') + 1
-            if json_start >= 0 and json_end > json_start:
-                json_str = analysis_response[json_start:json_end]
-                analysis = json.loads(json_str)
-            else:
-                raise ValueError("No JSON found in response")
-        except (json.JSONDecodeError, ValueError) as e:
-            logger.error(f"Failed to parse coordinator analysis: {e}")
-            # Fallback to simple keyword-based routing
-            analysis = {
-                "next_action": "web_search",
-                "reasoning": "Fallback: LLM analysis failed, using web search",
-                "confidence": 0.5,
-                "search_strategy": "broader"
-            }
-        
-        next_action = analysis.get("next_action", "web_search")
-        reasoning = analysis.get("reasoning", "No reasoning provided")
-        confidence = analysis.get("confidence", 0.5)
-        missing_info = analysis.get("missing_info", "")
-        search_strategy = analysis.get("search_strategy", "broader")
-        
-        # Build streaming chunks
-        chunks = [
-            f"🧠 **Coordinator:** {reasoning}",
-            f"📊 **Confidence:** {confidence:.1%}",
-            f"🔄 **Iteration:** {iteration + 1}/{max_iterations}"
-        ]
-        
-        if missing_info:
-            chunks.append(f"🔍 **Missing:** {missing_info}")
-        
-        # Route based on LLM analysis
-        if next_action == "browser_automation":
-            chunks.append("🌐 **Decision:** Browser automation needed")
-            return Command(
-                update={
-                    "coordinator_analysis": {
-                        "reasoning": reasoning,
-                        "next_action": "browser_automation",
-                        "confidence": confidence,
-                        "browser_capabilities_needed": analysis.get("browser_capabilities_needed", []),
-                        "requires_visual_analysis": analysis.get("requires_visual_analysis", False),
-                        "requires_interaction": analysis.get("requires_interaction", False),
-                        "requires_authentication": analysis.get("requires_authentication", False)
-                    },
-                    "streaming_chunks": chunks + ["→ Routing to browser agent"]
+    # Decision logic based on context
+    query_lower = query.lower()
+    
+    # If we have substantial results, synthesize
+    if (has_web_results and len(web_results) >= 3) or (has_mcp_results and len(mcp_results) >= 2):
+        chunks.append("✅ **Decision:** Sufficient results available")
+        return Command(
+            update={
+                "coordinator_analysis": {
+                    "reasoning": f"Sufficient results available (web: {len(web_results)}, tools: {len(mcp_results)})",
+                    "next_action": "synthesize"
                 },
-                goto="browser_agent"
-            )
-        
-        elif next_action == "web_search":
-            chunks.append("🌐 **Decision:** Web search needed")
-            return Command(
-                update={
-                    "coordinator_analysis": {
-                        "reasoning": reasoning,
-                        "next_action": "web_search",
-                        "confidence": confidence,
-                        "search_strategy": search_strategy,
-                        "missing_info": missing_info
-                    },
-                    "streaming_chunks": chunks + ["→ Routing to web agent"]
+                "streaming_chunks": chunks + ["→ Routing to synthesizer"]
+            },
+            goto="synthesizer"
+        )
+    
+    # If browser automation was attempted but failed, try web search as fallback
+    if has_browser_results and any("failed" in str(result).lower() for result in mcp_results):
+        chunks.append("🔄 **Decision:** Browser failed, trying web search")
+        return Command(
+            update={
+                "coordinator_analysis": {
+                    "reasoning": "Browser automation failed, trying web search as fallback",
+                    "next_action": "web_search",
+                    "search_strategy": "broader"
                 },
-                goto="web_agent"
-            )
-        
-        elif next_action == "create_tools":
-            chunks.append("🛠️ **Decision:** Tool creation needed")
-            return Command(
-                update={
-                    "coordinator_analysis": {
-                        "reasoning": reasoning,
-                        "next_action": "create_tools",
-                        "confidence": confidence
-                    },
-                    "streaming_chunks": chunks + ["→ Routing to MCP agent"]
+                "streaming_chunks": chunks + ["→ Routing to web agent (browser fallback)"]
+            },
+            goto="web_agent"
+        )
+    
+    # If we've tried web search but got few results, try targeted search
+    if has_web_results and len(web_results) < 3 and "web_search" in previous_actions:
+        chunks.append("🎯 **Decision:** Previous web search insufficient, trying targeted approach")
+        return Command(
+            update={
+                "coordinator_analysis": {
+                    "reasoning": "Previous web search yielded insufficient results, trying targeted search",
+                    "next_action": "web_search",
+                    "search_strategy": "targeted",
+                    "missing_info": "more specific and detailed information"
                 },
-                goto="mcp_agent"
-            )
-        
-        else:  # synthesize
-            chunks.append("✅ **Decision:** Ready to synthesize")
-            return Command(
-                update={
-                    "coordinator_analysis": {
-                        "reasoning": reasoning,
-                        "next_action": "synthesize",
-                        "confidence": confidence,
-                        "local_image_files": analysis.get("local_image_files", False),
-                        "vision_analysis_needed": analysis.get("vision_analysis_needed", False)
-                    },
-                    "streaming_chunks": chunks + ["→ Routing to synthesizer"]
+                "streaming_chunks": chunks + ["→ Routing to web agent (targeted search)"]
+            },
+            goto="web_agent"
+        )
+    
+    # If we've tried tools but they failed, try web search
+    if has_mcp_results and any("failed" in str(result).lower() for result in mcp_results) and "create_tools" in previous_actions:
+        chunks.append("🌐 **Decision:** Tool creation failed, trying web search")
+        return Command(
+            update={
+                "coordinator_analysis": {
+                    "reasoning": "Tool creation failed, trying web search as alternative",
+                    "next_action": "web_search",
+                    "search_strategy": "broader"
                 },
-                goto="synthesizer"
-            )
-        
-    except Exception as e:
-        logger.error(f"Coordinator LLM analysis error: {e}")
-        # Fallback to simple keyword-based routing
-        query_lower = query.lower()
-        
-        # Browser automation keywords
-        browser_keywords = ['youtube', 'video', 'watch', 'login', 'click', 'screenshot', 'social media', 'shopping', 'cart', 'navigate', 'go to']
-        if any(keyword in query_lower for keyword in browser_keywords):
-            return Command(
-                update={
-                    "coordinator_analysis": {
-                        "reasoning": "Fallback: Query contains browser automation keywords",
-                        "next_action": "browser_automation"
-                    },
-                    "streaming_chunks": [f"🌐 **Coordinator (Fallback):** Browser automation needed for: {query}", "→ Routing to browser agent"]
+                "streaming_chunks": chunks + ["→ Routing to web agent (tool fallback)"]
+            },
+            goto="web_agent"
+        )
+    
+    # First-time routing based on query analysis
+    # Browser automation keywords
+    browser_keywords = ['youtube', 'video', 'watch', 'login', 'click', 'screenshot', 'social media', 'shopping', 'cart', 'navigate', 'go to']
+    if any(keyword in query_lower for keyword in browser_keywords):
+        chunks.append("🌐 **Decision:** Browser automation needed")
+        return Command(
+            update={
+                "coordinator_analysis": {
+                    "reasoning": "Query contains browser automation keywords",
+                    "next_action": "browser_automation"
                 },
-                goto="browser_agent"
-            )
-        
-        # Web search keywords
-        web_keywords = ['weather', 'news', 'latest', 'what is', 'how to', 'find', 'search', 'look up']
-        if any(keyword in query_lower for keyword in web_keywords):
-            return Command(
-                update={
-                    "coordinator_analysis": {
-                        "reasoning": "Fallback: Query needs current information from web",
-                        "next_action": "web_search",
-                        "search_strategy": "broader"
-                    },
-                    "streaming_chunks": [f"🌐 **Coordinator (Fallback):** Web search needed for: {query}", "→ Routing to web agent"]
+                "streaming_chunks": chunks + ["→ Routing to browser agent"]
+            },
+            goto="browser_agent"
+        )
+    
+    # Web search keywords
+    web_keywords = ['weather', 'news', 'latest', 'what is', 'how to', 'find', 'search', 'look up']
+    if any(keyword in query_lower for keyword in web_keywords):
+        chunks.append("🌐 **Decision:** Web search needed")
+        return Command(
+            update={
+                "coordinator_analysis": {
+                    "reasoning": "Query needs current information from web",
+                    "next_action": "web_search",
+                    "search_strategy": "broader"
                 },
-                goto="web_agent"
-            )
-        
-        # Default to synthesizer if we have any results, otherwise try web search
-        if web_results or mcp_results:
-            return Command(
-                update={
-                    "coordinator_analysis": {
-                        "reasoning": "Fallback: Default route with existing results",
-                        "next_action": "synthesize"
-                    },
-                    "streaming_chunks": [f"🧠 **Coordinator (Fallback):** Default route for: {query}", "→ Routing to synthesizer"]
+                "streaming_chunks": chunks + ["→ Routing to web agent"]
+            },
+            goto="web_agent"
+        )
+    
+    # Tool creation keywords
+    tool_keywords = ['calculate', 'compute', 'analyze', 'process', 'generate', 'create', 'build']
+    if any(keyword in query_lower for keyword in tool_keywords):
+        chunks.append("🛠️ **Decision:** Tool creation needed")
+        return Command(
+            update={
+                "coordinator_analysis": {
+                    "reasoning": "Query needs computational tools",
+                    "next_action": "create_tools"
                 },
-                goto="synthesizer"
-            )
-        else:
-            return Command(
-                update={
-                    "coordinator_analysis": {
-                        "reasoning": "Fallback: No results yet, trying web search",
-                        "next_action": "web_search",
-                        "search_strategy": "broader"
-                    },
-                    "streaming_chunks": [f"🌐 **Coordinator (Fallback):** No results yet for: {query}", "→ Routing to web agent"]
+                "streaming_chunks": chunks + ["→ Routing to MCP agent"]
+            },
+            goto="mcp_agent"
+        )
+    
+    # Default to synthesizer if we have any results, otherwise try web search
+    if has_web_results or has_mcp_results:
+        chunks.append("✅ **Decision:** Default route with existing results")
+        return Command(
+            update={
+                "coordinator_analysis": {
+                    "reasoning": "Default route to synthesizer with existing results",
+                    "next_action": "synthesize"
                 },
-                goto="web_agent"
-            )
+                "streaming_chunks": chunks + ["→ Routing to synthesizer"]
+            },
+            goto="synthesizer"
+        )
+    else:
+        chunks.append("🌐 **Decision:** No results yet, trying web search")
+        return Command(
+            update={
+                "coordinator_analysis": {
+                    "reasoning": "No results yet, trying web search as initial approach",
+                    "next_action": "web_search",
+                    "search_strategy": "broader"
+                },
+                "streaming_chunks": chunks + ["→ Routing to web agent"]
+            },
+            goto="web_agent"
+        )
 
 
 def web_agent_node(state: State) -> Command[Literal["evaluator"]]:
@@ -282,6 +234,9 @@ def web_agent_node(state: State) -> Command[Literal["evaluator"]]:
     search_strategy = coordinator_analysis.get("search_strategy", "broader")
     missing_info = coordinator_analysis.get("missing_info", "")
     existing_results = state.get("web_search_results", [])
+    
+    # Get image files from state instead of detecting them independently
+    image_files = state.get("image_files", [])
     
     # Check if this is a fallback from browser agent
     mcp_results = state.get("mcp_execution_results", [])
@@ -308,9 +263,13 @@ def web_agent_node(state: State) -> Command[Literal["evaluator"]]:
                 query=query
             )
 
-        # Get search query breakdown
+        # Add image context if images exist
+        if image_files:
+            decomposition_prompt += f"\n\nIMAGES AVAILABLE: {', '.join([os.path.basename(f) for f in image_files])} in gaia_files directory. Please consider these images when decomposing the search query."
+
+        # Get search query breakdown with vision support
         decomp_response = ""
-        for chunk in llm_provider._make_api_call(decomposition_prompt):
+        for chunk in llm_provider._make_api_call(decomposition_prompt, image_files):
             decomp_response += chunk
         
         # Parse the JSON response
@@ -331,6 +290,9 @@ def web_agent_node(state: State) -> Command[Literal["evaluator"]]:
         
         # Adapt search approach based on strategy
         chunks = []
+        if image_files:
+            chunks.append(f"🖼️ **Vision-enabled search:** {len(image_files)} images detected")
+        
         if search_strategy == "targeted":
             # For targeted searches, don't include original query again
             final_search_queries = search_queries[:3]
@@ -404,15 +366,174 @@ def mcp_agent_node(state: State) -> Command[Literal["evaluator"]]:
     """MCP agent node for intelligent tool analysis, creation, and execution"""
     logger.info("MCP agent analyzing query for tool requirements...")
     
+    mcp_factory = MCPFactory()
+    mcp_registry = MCPRegistry()
+    llm_provider = LLMProvider()
     query = state["original_query"]
+    coordinator_analysis = state.get("coordinator_analysis", {})
+    
+    # Get image files from state instead of detecting them independently
+    image_files = state.get("image_files", [])
     
     try:
-        # Use the new MCPAgent class
-        mcp_agent = MCPAgent()
-        chunks, execution_results = mcp_agent.analyze_and_execute(query)
+        chunks = ["🛠️ **MCP Agent:** Analyzing query for tool requirements"]
+        
+        if image_files:
+            chunks.append(f"🖼️ **Vision-enabled analysis:** {len(image_files)} images detected")
+        
+        # Step 1: Analyze the query to determine what tools are needed
+        analysis_prompt = TOOL_REQUIREMENTS_ANALYSIS_PROMPT.format(query=query)
+
+        # Add image context if images exist
+        if image_files:
+            analysis_prompt += f"\n\nIMAGES AVAILABLE: {', '.join([os.path.basename(f) for f in image_files])} in gaia_files directory. Please consider these images when analyzing tool requirements."
+
+        # Get tool requirements analysis with vision support
+        analysis_response = ""
+        for chunk in llm_provider._make_api_call(analysis_prompt, image_files):
+            analysis_response += chunk
+        
+        # Parse the analysis
+        tool_requirements = []
+        execution_strategy = "sequential"
+        try:
+            json_start = analysis_response.find('{')
+            json_end = analysis_response.rfind('}') + 1
+            if json_start >= 0 and json_end > json_start:
+                json_str = analysis_response[json_start:json_end]
+                analysis_data = json.loads(json_str)
+                tool_requirements = analysis_data.get("tool_requirements", [])
+                execution_strategy = analysis_data.get("execution_strategy", "sequential")
+                reasoning = analysis_data.get("reasoning", "No reasoning provided")
+            else:
+                raise ValueError("No JSON found in response")
+        except (json.JSONDecodeError, ValueError) as e:
+            logger.error(f"Failed to parse tool analysis: {e}")
+            # Fallback to single tool
+            tool_requirements = [{
+                "name": "_".join(query.split()[:3]).lower(),
+                "description": f"Tool for: {query}",
+                "purpose": "Handle the user query",
+                "dependencies": [],
+                "execution_order": 1,
+                "can_run_parallel": False
+            }]
+            reasoning = "Fallback: Single tool approach"
+        
+        chunks.extend([
+            f"📋 **Analysis:** {reasoning}",
+            f"🔧 **Strategy:** {execution_strategy} execution",
+            f"🛠️ **Tools needed:** {len(tool_requirements)}"
+        ])
+        
+        # Step 2: Check for existing tools that could help
+        existing_tools = []
+        for req in tool_requirements:
+            matching_tools = mcp_registry.search_tools(req["name"])
+            if matching_tools:
+                existing_tools.extend(matching_tools)
+                chunks.append(f"✅ **Found existing tool:** {req['name']}")
+        
+        # Step 3: Create missing tools
+        tools_to_create = [req for req in tool_requirements if not any(t.name == req["name"] for t in existing_tools)]
+        
+        if tools_to_create:
+            chunks.append(f"🆕 **Creating {len(tools_to_create)} new tools...**")
+            
+            # Generate scripts for missing tools
+            for req in tools_to_create:
+                tool_name = req["name"]
+                description = req["description"]
+                purpose = req["purpose"]
+                
+                chunks.append(f"🔧 **Creating:** {tool_name}")
+                
+                # Generate script for this specific tool
+                script_prompt = TOOL_SCRIPT_GENERATION_PROMPT.format(
+                    tool_name=tool_name,
+                    description=description,
+                    purpose=purpose,
+                    query=query,
+                    specialized_capabilities=req.get('specialized_capabilities', []),
+                    api_endpoints=req.get('api_endpoints', []),
+                    external_services=req.get('external_services', [])
+                )
+
+                # Add image context if images exist
+                if image_files:
+                    script_prompt += f"\n\nIMAGES AVAILABLE: {', '.join([os.path.basename(f) for f in image_files])} in gaia_files directory. Consider these images when generating the tool script."
+
+                # Generate script content with vision support
+                script_content = ""
+                for chunk in llm_provider._make_api_call(script_prompt, image_files):
+                    script_content += chunk
+                
+                # Log the generated script for debugging
+                logger.info(f"Generated script for {tool_name}:")
+                logger.info(f"Script content:\n{script_content}")
+                
+                # Create the function
+                function, metadata = mcp_factory.create_mcp_from_script(tool_name, script_content)
+                
+                if function:
+                    # Log function details
+                    logger.info(f"Function {tool_name} created successfully")
+                    logger.info(f"Metadata: {metadata}")
+                    
+                    # Register the tool
+                    success = mcp_registry.register_tool(tool_name, function, metadata, script_content)
+                    if success:
+                        chunks.append(f"   ✅ Registered: {tool_name}")
+                        logger.info(f"Tool {tool_name} registered successfully")
+                    else:
+                        chunks.append(f"   ❌ Registration failed: {tool_name}")
+                        logger.error(f"Tool {tool_name} registration failed")
+                else:
+                    chunks.append(f"   ❌ Creation failed: {tool_name}")
+                    logger.error(f"Function {tool_name} creation failed")
+                    logger.error(f"Script that failed:\n{script_content}")
+        
+        # Step 4: Execute tools according to strategy
+        execution_results = []
+        
+        if execution_strategy == "sequential":
+            chunks.append("⚡ **Executing tools sequentially...**")
+            
+            # Sort by execution order
+            sorted_requirements = sorted(tool_requirements, key=lambda x: x["execution_order"])
+            
+            for req in sorted_requirements:
+                tool_name = req["name"]
+                chunks.append(f"🔍 **Executing:** {tool_name}")
+                
+                try:
+                    # Extract arguments for this tool based on the query
+                    tool_args = extract_tool_arguments(req, query, llm_provider)
+                    
+                    # Execute the tool - most generated tools are self-contained
+                    if tool_args:
+                        # Only pass arguments if the tool explicitly needs them
+                        result = mcp_registry.execute_tool(tool_name, *tool_args)
+                        execution_results.append(f"✅ {tool_name}: {str(result)[:100]}...")
+                        chunks.append(f"   → Success: {str(result)[:50]}...")
+                        logger.info(f"Tool {tool_name} executed with args {tool_args}: {result}")
+                    else:
+                        # Most tools are self-contained and don't need arguments
+                        result = mcp_registry.execute_tool(tool_name)
+                        execution_results.append(f"✅ {tool_name}: {str(result)[:100]}...")
+                        chunks.append(f"   → Success: {str(result)[:50]}...")
+                        logger.info(f"Tool {tool_name} executed without args: {result}")
+                        
+                except Exception as e:
+                    execution_results.append(f"❌ {tool_name}: {str(e)}")
+                    chunks.append(f"   → Failed: {str(e)}")
+                    logger.error(f"Tool {tool_name} execution failed: {e}")
+        
+        chunks.append(f"📊 **Registry status:** {len(mcp_registry.tools)} total tools available")
         
         return Command(
             update={
+                "mcp_tools_created": tool_requirements,
                 "mcp_execution_results": execution_results,
                 "streaming_chunks": chunks
             },
@@ -439,6 +560,9 @@ def evaluator_node(state: State) -> Command[Literal["coordinator", "synthesizer"
     mcp_results = state.get("mcp_execution_results", [])
     iteration = state.get("iteration_count", 0)
     max_iter = state.get("max_iterations", 5)
+    
+    # Get image files from state instead of detecting them independently
+    image_files = state.get("image_files", [])
     
     # Check if browser automation was successful
     logger.info(f"Evaluator checking browser results: {mcp_results}")
@@ -483,10 +607,14 @@ def evaluator_node(state: State) -> Command[Literal["coordinator", "synthesizer"
         max_iter=max_iter
     )
     
+    # Add image context if images exist
+    if image_files:
+        evaluation_prompt += f"\n\nIMAGES AVAILABLE: {', '.join([os.path.basename(f) for f in image_files])} in gaia_files directory. Please consider these images when evaluating completeness."
+    
     try:
-        # Get LLM evaluation
+        # Get LLM evaluation with vision support if images are available
         eval_response = ""
-        for chunk in llm_provider._make_api_call(evaluation_prompt):
+        for chunk in llm_provider._make_api_call(evaluation_prompt, image_files):
             eval_response += chunk
         
         # Parse the JSON response
@@ -500,13 +628,15 @@ def evaluator_node(state: State) -> Command[Literal["coordinator", "synthesizer"
                 raise ValueError("No JSON found in response")
         except (json.JSONDecodeError, ValueError) as e:
             logger.error(f"Failed to parse evaluation: {e}")
-            # Fallback evaluation
-            completeness = min(1.0, (len(web_results) * 0.3 + len(mcp_results) * 0.4 + 0.3))
+            # Fallback evaluation - boost score if images are available
+            base_completeness = min(1.0, (len(web_results) * 0.3 + len(mcp_results) * 0.4 + 0.3))
+            if image_files:
+                base_completeness = min(1.0, base_completeness + 0.2)  # Boost for images
             evaluation = {
-                "completeness_score": completeness,
-                "has_sufficient_info": completeness >= 0.7 or iteration >= max_iter,
-                "recommendation": "synthesize" if completeness >= 0.7 or iteration >= max_iter else "continue_search",
-                "reasoning": "Fallback evaluation based on simple metrics"
+                "completeness_score": base_completeness,
+                "has_sufficient_info": base_completeness >= 0.7 or iteration >= max_iter,
+                "recommendation": "synthesize" if base_completeness >= 0.7 or iteration >= max_iter else "continue_search",
+                "reasoning": f"Fallback evaluation based on simple metrics{' with image boost' if image_files else ''}"
             }
         
         completeness = evaluation.get("completeness_score", 0.5)
@@ -514,6 +644,8 @@ def evaluator_node(state: State) -> Command[Literal["coordinator", "synthesizer"
         reasoning = evaluation.get("reasoning", "No reasoning provided")
         
         chunks = [f"📊 **Evaluator:** {reasoning}\n"]
+        if image_files:
+            chunks.append(f"🖼️ **Vision context:** {len(image_files)} images considered\n")
         chunks.append(f"📈 **Completeness:** {completeness:.1%}\n")
         
         # Decide next action
@@ -564,16 +696,8 @@ def synthesizer_node(state: State):
     web_results = state.get("web_search_results", [])
     mcp_results = state.get("mcp_execution_results", [])
     
-    # Check if we have image files
-    # Use absolute path to gaia_files directory
-    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-    gaia_files_dir = os.path.join(project_root, "gaia_files")
-    image_files = []
-    if os.path.exists(gaia_files_dir):
-        image_files = [f for f in os.listdir(gaia_files_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff'))]
-        logger.info(f"Found {len(image_files)} image files in {gaia_files_dir}: {image_files}")
-    else:
-        logger.warning(f"gaia_files directory not found: {gaia_files_dir}")
+    # Get image files from state instead of detecting them independently
+    image_files = state.get("image_files", [])
     
     # Create synthesis prompt
     web_results_summary = json.dumps(web_results[:3], indent=2) if web_results else "No web results"
@@ -588,36 +712,22 @@ def synthesizer_node(state: State):
     
     # Add image context if images exist
     if image_files:
-        prompt += f"\n\nIMAGES AVAILABLE: {', '.join(image_files)} in gaia_files directory. Please analyze these images to answer the query."
+        prompt += f"\n\nIMAGES AVAILABLE: {', '.join([os.path.basename(f) for f in image_files])} in gaia_files directory. Please analyze these images to answer the query."
     
     try:
-        # Generate final answer
+        # Generate final answer with vision support
         chunks = ["🎨 **Synthesizer:** Creating final answer...\n"]
         if image_files:
-            chunks.append(f"🖼️ **Images detected:** {', '.join(image_files)}\n")
+            chunks.append(f"🖼️ **Images detected:** {', '.join([os.path.basename(f) for f in image_files])}\n")
             chunks.append("👁️ **Using Claude's vision capabilities...**\n")
-            logger.info(f"Using vision analysis for {len(image_files)} images")
         
         response_chunks = []
-        
-        # Use vision-enabled API call if images are present
-        if image_files:
-            # Convert relative paths to absolute paths
-            image_paths = [os.path.join(gaia_files_dir, img) for img in image_files]
-            logger.info(f"Image paths for vision analysis: {image_paths}")
-            
-            for chunk in llm_provider._make_vision_api_call(prompt, image_paths):
-                response_chunks.append(chunk)
-                chunks.append(chunk)
-        else:
-            # Use regular API call for text-only
-            logger.info("Using text-only API call (no images)")
-            for chunk in llm_provider._make_api_call(prompt):
-                response_chunks.append(chunk)
-                chunks.append(chunk)
+        # Pass image_files to the LLM provider for vision analysis
+        for chunk in llm_provider._make_api_call(prompt, image_files):
+            response_chunks.append(chunk)
+            chunks.append(chunk)
         
         final_answer = "".join(response_chunks)
-        logger.info(f"Generated final answer with {len(response_chunks)} chunks")
         
         return {
             "final_answer": final_answer,
@@ -631,4 +741,23 @@ def synthesizer_node(state: State):
             "final_answer": f"Error generating response: {str(e)}",
             "confidence_score": 0.3,
             "streaming_chunks": [f"❌ **Synthesis error:** {str(e)}\n"]
-        } 
+        }
+
+
+def extract_tool_arguments(tool_metadata, user_query, llm_provider):
+    """
+    Use the LLM to extract arguments for a tool from the user query.
+    """
+    prompt = f"""
+    Tool: {tool_metadata['name']}
+    Description: {tool_metadata['description']}
+    Expected arguments: {tool_metadata.get('args', 'None')}
+    User query: {user_query}
+    
+    Extract the arguments from the user query and return them as a Python list in the correct order.
+    """
+    response = llm_provider.simple_completion(prompt)
+    try:
+        return eval(response)  # Or use ast.literal_eval for safety
+    except Exception:
+        return []

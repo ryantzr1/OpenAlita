@@ -16,14 +16,21 @@ ANALYSIS TASK:
 5. Identify specialized capabilities needed (APIs, vision, real-time data, etc.)
 
 SPECIALIZED CAPABILITIES TO CONSIDER:
+- **Built-in Vision**: Image analysis, OCR, text extraction from images (USE THIS FOR VISION TASKS)
 - **Browser Automation**: YouTube videos, dynamic content, authentication
 - **Real-time APIs**: GitHub API, YouTube API, Twitter API, weather APIs
-- **Vision/Image Processing**: Image analysis, OCR, video processing
 - **System Access**: File operations, network info, hardware specs
 - **Real-time Data**: Current time, live feeds, dynamic content
 - **Authentication**: OAuth flows, API keys, user credentials
 - **Interactive Operations**: User input, real-time calculations
 - **Platform Integration**: Discord, Slack, email, messaging
+
+VISION TASK GUIDELINES:
+- For image analysis tasks: Use built-in vision capabilities
+- For OCR/text extraction: Use built-in vision capabilities
+- For fraction detection in images: Use built-in vision capabilities
+- DO NOT require external image APIs or services
+- Built-in vision can handle: text extraction, object detection, mathematical notation, etc.
 
 RESPONSE FORMAT:
 Return a JSON object with this structure:
@@ -36,9 +43,9 @@ Return a JSON object with this structure:
             "dependencies": ["list", "of", "other", "tools", "if", "any"],
             "execution_order": 1,
             "can_run_parallel": false,
-            "specialized_capabilities": ["api_access", "vision", "real_time", "etc"],
+            "specialized_capabilities": ["built_in_vision", "api_access", "real_time", "etc"],
             "api_endpoints": ["specific", "apis", "needed"],
-            "external_services": ["github", "youtube", "openai", "etc"]
+            "external_services": ["github", "youtube", "etc"]
         }}
     ],
     "execution_strategy": "sequential" | "parallel" | "mixed",
@@ -62,23 +69,50 @@ SPECIALIZED CAPABILITIES: {specialized_capabilities}
 API ENDPOINTS: {api_endpoints}
 EXTERNAL SERVICES: {external_services}
 
+CRITICAL REQUIREMENTS:
+1. **USE SYSTEM'S BUILT-IN CAPABILITIES ONLY** - Do NOT call external APIs like OpenAI, Google, etc.
+2. **For vision tasks**: The system already has vision capabilities built into LLMProvider
+3. **For calculations**: Use Python's built-in math libraries
+4. **For text processing**: Use Python's built-in string operations
+5. **For data processing**: Use Python's built-in libraries (json, re, etc.)
+
 IMPORTANT FUNCTION SIGNATURE RULES:
 - If the tool needs to process the query text, use: def {tool_name}(text):
 - If the tool is self-contained (calculations, counters), use: def {tool_name}():
 - If the tool needs multiple parameters, be explicit about what they are
 
-Create a focused, single-purpose function that does exactly what's needed.
-Include proper error handling and return meaningful results.
+VISION TASKS GUIDELINES:
+- **DO NOT** try to import or use openai, PIL, or other external vision libraries
+- **DO NOT** try to access image files directly or make API calls
+- **DO** return a description of what the tool would analyze or extract
+- **DO** mention that the system's built-in vision capabilities will handle the actual image processing
+- For image analysis: Return a description of what the tool would analyze
+- For OCR/text extraction: Return a description of what text would be extracted
+- For fraction detection: Return a description of how fractions would be identified
+- For mathematical content: Return a description of what mathematical elements would be found
+
+SYSTEM VISION CAPABILITIES:
+The system has built-in vision capabilities through LLMProvider that can:
+- Analyze images and extract text (OCR)
+- Identify mathematical notation and fractions
+- Detect objects and patterns
+- Process visual content automatically
+- Handle multiple image formats (PNG, JPG, GIF, etc.)
+
+Create a focused, single-purpose function that describes what it would do, not how to do it.
+Include proper error handling and return meaningful descriptions.
 
 Script format:
 # MCP Name: {tool_name}
 # Description: {description}
 # Arguments: function arguments (text, or none if self-contained)
 # Returns: what the function returns
-# Requires: comma-separated list of required modules
+# Requires: comma-separated list of required modules (use built-in only)
 
 def {tool_name}():
     # Implementation here with proper error handling
+    # Use built-in Python capabilities only
+    # For vision tasks: Return description of what would be analyzed
     return result"""
 
 BROWSER_MCP_ANALYSIS_PROMPT = """Analyze this browser automation task and determine if we need to create MCP tools to assist with the browser automation.
