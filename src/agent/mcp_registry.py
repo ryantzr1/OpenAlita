@@ -8,6 +8,7 @@ import os
 from typing import Dict, Any, List, Optional, Callable
 from dataclasses import dataclass, asdict
 from datetime import datetime
+import inspect
 
 logger = logging.getLogger('alita.mcp_registry')
 
@@ -98,9 +99,38 @@ class MCPRegistry:
             raise ValueError(f"Tool '{name}' not found")
         
         try:
-            result = tool.function(*args, **kwargs)
-            logger.info(f"Executed tool '{name}' successfully")
-            return result
+            # Check if the function accepts parameters
+            sig = inspect.signature(tool.function)
+            
+            # If the function has no parameters (other than self for methods), call without arguments
+            if len(sig.parameters) == 0 or (len(sig.parameters) == 1 and 'self' in sig.parameters):
+                result = tool.function()
+                logger.info(f"Executed tool '{name}' successfully (no args)")
+                return result
+            else:
+                # Function accepts parameters, pass them through
+                result = tool.function(*args, **kwargs)
+                logger.info(f"Executed tool '{name}' successfully (with args)")
+                return result
+                
+        except TypeError as e:
+            # Handle parameter mismatch errors
+            error_str = str(e).lower()
+            if "missing" in error_str and "argument" in error_str:
+                logger.warning(f"Parameter mismatch for tool '{name}': {e}")
+                logger.info(f"Trying to execute tool '{name}' without arguments as fallback")
+                
+                try:
+                    # Try without arguments as fallback
+                    result = tool.function()
+                    logger.info(f"Executed tool '{name}' successfully (fallback, no args)")
+                    return result
+                except Exception as fallback_error:
+                    logger.error(f"Fallback execution also failed for tool '{name}': {fallback_error}")
+                    raise e  # Re-raise the original error
+            else:
+                # Re-raise if it's not a parameter mismatch
+                raise
         except Exception as e:
             logger.error(f"Error executing tool '{name}': {e}")
             raise
@@ -175,6 +205,21 @@ class MCPRegistry:
             logger.debug(f"Saved {len(data)} tools to registry")
         except Exception as e:
             logger.error(f"Failed to save registry: {e}")
+    
+    def log_registered_tools(self):
+        """Log all registered tools for debugging"""
+        logger.info(f"=== MCP Registry Status ===")
+        logger.info(f"Total tools registered: {len(self.tools)}")
+        
+        for name, tool in self.tools.items():
+            logger.info(f"Tool: {name}")
+            logger.info(f"  Description: {tool.description}")
+            logger.info(f"  Created: {tool.created_at}")
+            logger.info(f"  Usage count: {tool.usage_count}")
+            logger.info(f"  Last used: {tool.last_used}")
+            logger.info(f"  Metadata: {tool.metadata}")
+            logger.info(f"  Script preview: {tool.script_content[:200]}...")
+            logger.info("---")
     
     def get_tool_capabilities(self) -> Dict[str, Any]:
         """Get MCP protocol capabilities for tools"""

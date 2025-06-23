@@ -144,7 +144,8 @@ class MCPFactory:
             
             # Add debug wrapper to check for return statements
             cleaned_script = self._add_return_check_wrapper(cleaned_script, function_name)
-            print(cleaned_script)  # Debug: Print the cleaned script
+            logger.debug(f"Final script for {function_name}:\n{cleaned_script}")
+            
             # Execute the script to define the function
             logger.debug("Executing script to define function")
             try:
@@ -164,6 +165,15 @@ class MCPFactory:
             if actual_function_name in safe_globals:
                 function = safe_globals[actual_function_name]
                 logger.info(f"Function '{actual_function_name}' successfully created")
+                
+                # Log function signature for debugging
+                import inspect
+                try:
+                    sig = inspect.signature(function)
+                    logger.debug(f"Function signature: {sig}")
+                except Exception as sig_error:
+                    logger.warning(f"Could not inspect function signature: {sig_error}")
+                
                 return function, metadata
             else:
                 all_vars = [k for k in safe_globals.keys() if not k.startswith('__')]
@@ -209,7 +219,18 @@ def _debug_wrapper_for_original_function(*args, **kwargs):
 {function_name} = _debug_wrapper_for_original_function
 """
             return script + "\n" + wrapper
-            
+        
+        # Parse the function signature to determine if it takes parameters
+        func_def_line_content = lines[func_def_line].strip()
+        has_parameters = False
+        
+        # Check if the function definition has parameters (anything between parentheses)
+        if '(' in func_def_line_content and ')' in func_def_line_content:
+            param_part = func_def_line_content.split('(', 1)[1].split(')', 1)[0].strip()
+            # If there are parameters (not just empty parentheses)
+            if param_part and param_part != 'self':
+                has_parameters = True
+        
         # Check if the function already has proper return statements
         has_return = False
         for line in lines[func_def_line:]:
@@ -220,8 +241,10 @@ def _debug_wrapper_for_original_function(*args, **kwargs):
         if not has_return:
             logger.warning(f"Function '{function_name}' might lack proper return statements")
         
-        # Add wrapper function
-        wrapper = f"""
+        # Add wrapper function with proper parameter handling
+        if has_parameters:
+            # Function takes parameters - use the original wrapper
+            wrapper = f"""
 # Original function preserved as _original_{function_name}
 _original_{function_name} = {function_name}
 
@@ -239,6 +262,28 @@ def {function_name}(*args, **kwargs):
         traceback.print_exc()
         return f"Error in '{function_name}': {{str(e)}}"
 """
+        else:
+            # Function takes no parameters - call without arguments
+            wrapper = f"""
+# Original function preserved as _original_{function_name}
+_original_{function_name} = {function_name}
+
+# Debug wrapper function
+def {function_name}(*args, **kwargs):
+    import traceback
+    try:
+        # Function takes no parameters, so call without arguments
+        result = _original_{function_name}()
+        if result is None:
+            print(f"WARNING: Function '{function_name}' returned None. Functions must return a value!")
+            return f"Error: Function '{function_name}' did not return a value"
+        return result
+    except Exception as e:
+        print(f"ERROR in '{function_name}': {{e}}")
+        traceback.print_exc()
+        return f"Error in '{function_name}': {{str(e)}}"
+"""
+        
         return script + "\n" + wrapper
     
     def _parse_script_metadata(self, script_content: str) -> Dict[str, Any]:

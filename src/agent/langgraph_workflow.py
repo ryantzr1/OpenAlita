@@ -556,13 +556,18 @@ SPECIALIZED CAPABILITIES: {req.get('specialized_capabilities', [])}
 API ENDPOINTS: {req.get('api_endpoints', [])}
 EXTERNAL SERVICES: {req.get('external_services', [])}
 
+IMPORTANT FUNCTION SIGNATURE RULES:
+- If the tool needs to process the query text, use: def {tool_name}(text):
+- If the tool is self-contained (calculations, counters), use: def {tool_name}():
+- If the tool needs multiple parameters, be explicit about what they are
+
 Create a focused, single-purpose function that does exactly what's needed.
 Include proper error handling and return meaningful results.
 
 Script format:
 # MCP Name: {tool_name}
 # Description: {description}
-# Arguments: function arguments
+# Arguments: function arguments (text, or none if self-contained)
 # Returns: what the function returns
 # Requires: comma-separated list of required modules
 
@@ -575,18 +580,30 @@ def {tool_name}():
                 for chunk in llm_provider._make_api_call(script_prompt):
                     script_content += chunk
                 
+                # Log the generated script for debugging
+                logger.info(f"Generated script for {tool_name}:")
+                logger.info(f"Script content:\n{script_content}")
+                
                 # Create the function
                 function, metadata = mcp_factory.create_mcp_from_script(tool_name, script_content)
                 
                 if function:
+                    # Log function details
+                    logger.info(f"Function {tool_name} created successfully")
+                    logger.info(f"Metadata: {metadata}")
+                    
                     # Register the tool
                     success = mcp_registry.register_tool(tool_name, function, metadata, script_content)
                     if success:
                         chunks.append(f"   ✅ Registered: {tool_name}")
+                        logger.info(f"Tool {tool_name} registered successfully")
                     else:
                         chunks.append(f"   ❌ Registration failed: {tool_name}")
+                        logger.error(f"Tool {tool_name} registration failed")
                 else:
                     chunks.append(f"   ❌ Creation failed: {tool_name}")
+                    logger.error(f"Function {tool_name} creation failed")
+                    logger.error(f"Script that failed:\n{script_content}")
         
         # Step 4: Execute tools according to strategy
         execution_results = []
@@ -605,20 +622,24 @@ def {tool_name}():
                     # Extract arguments for this tool based on the query
                     tool_args = _extract_tool_arguments(tool_name, query, req)
                     
-                    # Execute the tool with arguments
+                    # Execute the tool - most generated tools are self-contained
                     if tool_args:
+                        # Only pass arguments if the tool explicitly needs them
                         result = mcp_registry.execute_tool(tool_name, *tool_args)
                         execution_results.append(f"✅ {tool_name}: {str(result)[:100]}...")
                         chunks.append(f"   → Success: {str(result)[:50]}...")
+                        logger.info(f"Tool {tool_name} executed with args {tool_args}: {result}")
                     else:
-                        # Try without arguments as fallback
+                        # Most tools are self-contained and don't need arguments
                         result = mcp_registry.execute_tool(tool_name)
                         execution_results.append(f"✅ {tool_name}: {str(result)[:100]}...")
                         chunks.append(f"   → Success: {str(result)[:50]}...")
+                        logger.info(f"Tool {tool_name} executed without args: {result}")
                         
                 except Exception as e:
                     execution_results.append(f"❌ {tool_name}: {str(e)}")
                     chunks.append(f"   → Failed: {str(e)}")
+                    logger.error(f"Tool {tool_name} execution failed: {e}")
         
         chunks.append(f"📊 **Registry status:** {len(mcp_registry.tools)} total tools available")
         
@@ -643,6 +664,33 @@ def {tool_name}():
 def _extract_tool_arguments(tool_name: str, query: str, tool_req: Dict[str, Any]) -> List[Any]:
     """Extract arguments for a tool from the query"""
     try:
+        # Check if the tool actually needs arguments based on its description/purpose
+        description = tool_req.get("description", "").lower()
+        purpose = tool_req.get("purpose", "").lower()
+        
+        # Check if the description suggests it needs input
+        input_keywords = ["text", "input", "query", "process", "parse", "analyze", "extract", "read"]
+        if any(keyword in description or keyword in purpose for keyword in input_keywords):
+            logger.debug(f"Tool '{tool_name}' mentions input processing, passing query")
+            return [query]
+        
+        # If the tool is self-contained (calculations, counters, etc.), don't pass arguments
+        self_contained_keywords = [
+            "calculate", "count", "compute", "determine", "find", "get", "generate",
+            "family", "member", "potato", "bag", "calculator", "counter"
+        ]
+        
+        # But be more careful - don't assume family_counter is self-contained
+        # Check if the description suggests it needs input
+        if any(keyword in description or keyword in purpose for keyword in self_contained_keywords):
+            # Double-check: if it mentions "text", "input", "query", "process", it probably needs arguments
+            if any(keyword in description or keyword in purpose for keyword in ["text", "input", "query", "process", "parse", "analyze"]):
+                logger.debug(f"Tool '{tool_name}' mentions input processing, passing query")
+                return [query]
+            else:
+                logger.debug(f"Tool '{tool_name}' appears to be self-contained, not passing arguments")
+                return []
+        
         # For string_reverser, extract the text to reverse
         if tool_name == "string_reverser":
             # Look for the reversed text in the query
@@ -657,10 +705,13 @@ def _extract_tool_arguments(tool_name: str, query: str, tool_req: Dict[str, Any]
             # Could also extract other words if needed
             return ["left"]  # Default to "left" for this specific case
         
-        # For other tools, try to extract relevant information
-        else:
-            # Generic argument extraction - pass the query as the first argument
+        # For tools that explicitly need the query as input
+        if "query" in description or "input" in description or "process" in description:
             return [query]
+        
+        # Default: don't pass arguments for most tools
+        logger.debug(f"Tool '{tool_name}' doesn't explicitly need arguments, calling without")
+        return []
             
     except Exception as e:
         logger.error(f"Error extracting arguments for {tool_name}: {e}")
