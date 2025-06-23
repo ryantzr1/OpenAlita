@@ -1,0 +1,106 @@
+# Awesome MCP Servers
+
+This is a curated list from https://github.com/punkpeye/awesome-mcp-servers
+
+- 1History/1History 📇 ☁️ - Access your browsing history from any device, with full-text search and no storage limits
+- a-hilaly/mcp-intercom 📇 ☁️ - MCP server for Intercom
+- ad-astra-tech/mcp-cal-com 📇 ☁️ - MCP server for Cal.com
+- Agent-Connect/Discord-MCP 📇 ☁️ - An MCP server that allows AI models to interact with Discord
+- aidial-inc/mcp-bedrock-adapter 🐍 ☁️ - MCP adapter for Amazon Bedrock
+- AlexW00/mcp-bing-search 🐍 ☁️ - MCP server that uses the Bing Search API
+- anac-ai/mcp-browser 📇 🏠 - Headless browser that can be controlled by AI models
+- anac-ai/mcp-crypto 📇 ☁️ - Interact with crypto protocols such as Aave, Compound, etc
+- anac-ai/mcp-hacker-news 📇 ☁️ - MCP server for Hacker News
+- anac-ai/mcp-zulip 📇 ☁️ - MCP server for Zulip
+- Anthropic/mcp-dummy-server 🐍 🏠 - Official dummy server from Anthropic
+- anthropic/tool-use-torch-eval 🐍 - Evaluation harness for tool use.
+- arxt/mcp-translator 📇 ☁️ - MCP server for DeepL, Google Translate, etc
+- ashish-b/mcp-notion 🐍 ☁️ - MCP server to search and get content from Notion
+- Bedrock-OSS/bedrock-oss-mcp 🐍 ☁️ - MCP server for Bedrock OSS
+- bionic-dev/bionic-mcp 🐍 🏠 - MCP server for Bionic, a Python framework for building production-ready AI models
+- BuilderIO/mcp-figma 📇 ☁️ - MCP server to extract data from Figma files
+- c-g-p/mcp-aria2 🐍 🏠 - MCP server for aria2, a command-line download utility
+- ca-scribner/mcp_py_repl 🐍 🏠 - Python REPL for MCP
+- chentsulin/mcp-gmail 🐍 ☁️ - Read, search, and send emails from Gmail
+- Claude-Tools/mcp-medium 🐍 ☁️ - MCP server for interacting with Medium
+- cogentapps/mcp-pinecone 🐍 ☁️ - MCP server for Pinecone, a vector database
+- Cortex-Models/mcp-the-graph 📇 ☁️ - MCP server for The Graph, a protocol for indexing and querying data from blockchains
+- Cursed-GPT/mcp-stability 🐍 ☁️ - MCP server for Stability AI
+- darrenjennings/mcp-search 🐍 ☁️ - General purpose search tool that uses Google, DuckDuckGo, Wikipedia, and other sources
+- deep-research/mcp-arxiv 🐍 ☁️ - MCP server for searching and retrieving papers from arXiv
+- deep-research/mcp-google-scholar 🐍 ☁️ - MCP server for Google Scholar
+- deep-research/mcp-pubmed 🐍 ☁️ - MCP server for PubMed
+- deep-research/mcp-sec 🐍 ☁️ - MCP server for searching and retrieving SEC filings
+- deep-research/mcp-semantic-scholar 🐍 ☁️ - MCP server for Semantic Scholar
+- deep-research/mcp-wikipedia 🐍 ☁️ - MCP server for Wikipedia
+- dmarx/mcp-pocket 🐍 ☁️ - MCP server for Pocket
+- e2b-dev/mcp-e2b 🐍 🏠 - MCP server for E2B, a sandboxed environment for running code
+- eimen-em/mcp-browser-ts 📇 🏠 - Headless browser that can be controlled by AI models
+- entree-capital/mcp-anthropic 🐍 ☁️ - MCP server for Anthropic's APIs
+- entree-capital/mcp-openai 🐍 ☁️ - MCP server for OpenAI's APIs
+- entree-capital/mcp-perplexity 🐍 ☁️ - MCP server for Perplexity's APIs
+- erikrobert/mcp-shopping 🐍 ☁️ - MCP server for online shopping
+- evan-k/mcp-obsidian 📇 🏠 - MCP server for Obsidian, a knowledge base and note-taking app
+- ggerganov/llama.cpp/server 🏎️ 🏠 - The reference implementation of a C++ inference server, which is also an MCP server.
+- Glana/mcp-glana-platform 📇 ☁️ - MCP server for Glana Platform
+- Glana/mcp-server-tester 📇 🏠 - A tool to test MCP servers for compliance with the protocol
+- grtcdr/mcp-metaphor 🐍 ☁️ - MCP server for Metaphor, a search engine that uses AI to find information
+- hamish-l/mcp-home-assistant 🐍 🏠 - MCP server for Home Assistant
+- hata-not-dead/mcp-browser-python 🐍 🏠 - Headless browser that can be controlled by AI models
+- human-protocol/mcp-human-in-the-loop 🐍 ☁️ - MCP server for Human Protocol, a protocol for human-in-the-loop machine learning
+- impira/mcp-impira 📇 ☁️ - MCP server for Impira, a platform for working with unstructured data
+- Integral-Healthcare/mcp-fhir 📇 ☁️ - MCP server for FHIR, a standard for healthcare data
+- kevin-ha/mcp-wolfram-alpha 🐍 ☁️ - MCP server for Wolfram Alpha
+- kristjan-h/mcp-stack-overflow 🐍 ☁️ - MCP server for Stack Overflow
+- langchain-ai/langchain 🐍 📇 - MCP server built into LangChain for serving LangChain Tools
+- lgrammel/mcp-linkedin 📇 ☁️ - MCP server for LinkedIn
+- m-a-y-a-n-k/mcp-image-editor 🐍 🏠 - Image editor that can be controlled by AI models
+- me Pusta/mcp-file-system 🐍 🏠 - MCP server for interacting with the local file system
+- me Pusta/mcp-process 🐍 🏠 - MCP server for interacting with processes
+- me Pusta/mcp-shell 🐍 🏠 - MCP server for executing shell commands
+- mediar-ai/screenpipe 🎖️ 🦀 🏠 🍎 - Local-first system for building context-aware AI agents
+- modelcontextprotocol/server-everything 📇 🏠 - MCP server that exercises all features of the protocol
+- mrjoshuak/godoc-mcp 🏎️ 🏠 - Token-efficient Go documentation server
+- mzxrai/mcp-openai 📇 ☁️ - Chat with OpenAI's smartest models
+- NakaokaRei/swift-mcp-gui 🏠 🍎 - Execute keyboard input and mouse movement
+- nguyenvanduocit/all-in-one-model-context-protocol 🏎️ 🏠 - Tools for Confluence, Jira, Youtube, etc.
+- NON906/omniparser-autogui-mcp 🐍 - Automatic operation of on-screen GUI
+- orellazi/coda-mcp 📇 ☁️ - MCP server for Coda
+- pierrebrunelle/mcp-server-openai 🐍 ☁️ - Query OpenAI models
+- pskill9/hn-server 📇 ☁️ - Structured data from Hacker News
+- PV-Bhat/vibe-check-mcp-server 📇 ☁️ - Vibe-check agent to ensure user alignment
+- pwh-pwh/cal-mcp - Mathematical expression calculation
+- pyroprompts/any-chat-completions-mcp - Chat with any OpenAI SDK Compatible API
+- Rai220/think-mcp 🐍 🏠 - Enhances agent reasoning with think-tools
+- reeeeemo/ancestry-mcp 🐍 🏠 - Read .ged files and genetic data
+- rember/rember-mcp 📇 🏠 - Create spaced repetition flashcards
+- roychri/mcp-server-asana 📇 ☁️ - Asana API integration
+- rusiaaman/wcgw 🐍 🏠 - Autonomous shell execution and computer control
+- SecretiveShell/MCP-wolfram-alpha 🐍 ☁️ - Wolfram Alpha API server
+- Seym0n/tiktok-mcp 📇 ☁️ - Interact with TikTok videos
+- Shopify/dev-mcp 📇 ☁️ - Interacts with Shopify Dev
+- sirmews/apple-notes-mcp 🐍 🏠 - Read from local Apple Notes database
+- sooperset/mcp-atlassian 🐍 ☁️ - MCP server for Atlassian products (Confluence and Jira)
+- suekou/mcp-notion-server 📇 🏠 - Interacting with Notion API
+- tacticlaunch/mcp-linear 📇 ☁️ 🍎 🪟 🐧 - Integrates with Linear
+- tanigami/mcp-server-perplexity 🐍 ☁️ - Interacting with Perplexity API
+- tevonsb/homeassistant-mcp 📇 🏠 - Access Home Assistant data and devices
+- tomekkorbak/oura-mcp-server 🐍 ☁️ - MCP server for Oura sleep tracking app
+- UnitVectorY-Labs/mcp-graphql-forge 🏎️ ☁️ 🍎 🪟 🐧 - Exposes GraphQL queries as tools
+- kw510/strava-mcp 📇 ☁️ - MCP server for Strava
+- wanaku-ai/wanaku ☁️ 🏠 - Extensible routing engine for enterprise systems
+- wong2/mcp-cli 📇 🏠 - CLI tool for testing MCP servers
+- ws-mcp - Wrap MCP servers with a WebSocket
+- yuna0x0/hackmd-mcp 📇 ☁️ - Interact with HackMD
+- ZeparHyfar/mcp-datetime - Date and time functions
+- zueai/mcp-manager 📇 ☁️ - Web UI to install and manage MCP servers
+- HenryHaoson/Yuque-MCP-Server 📇 ☁️ - Yuque API integration
+- Mtehabsim/ScreenPilot 🐍 🏠 - GUI control for automation
+- tumf/web3-mcp 🐍 ☁️ - Ankr Advanced API for web3 data
+- danielkennedy1/pdf-tools-mcp 🐍 - PDF download, view & manipulation
+- dotemacs/domain-lookup-mcp 🏎️ - Domain name lookup service (RDAP/WHOIS)
+- Klavis-AI/YouTube 🐍 📇 - Extract YouTube video information
+- ttommyth/interactive-mcp 📇 🏠 🍎 🪟 🐧 - Interactive LLM workflows with local user prompts
+- olalonde/mcp-human 📇 ☁️ - Human assistance via AWS Mechanical Turk
+- gwbischof/free-will-mcp 🐍 🏠 - AI free will tools (experimental)
+- caol64/wenyan-mcp 📇 🏠 🍎 🪟 🐧 - Format Markdown and publish to WeChat
