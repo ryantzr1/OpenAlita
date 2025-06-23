@@ -60,166 +60,139 @@ def coordinator_node(state: State) -> Command[Literal["web_agent", "mcp_agent", 
     mcp_results = state.get("mcp_execution_results", [])
     previous_analysis = state.get("coordinator_analysis", {})
     
-    # Intelligent context-aware routing based on what we've already tried
-    chunks = [f"🧠 **Coordinator:** Analyzing query and previous attempts..."]
+    # Analyze quality and gaps in existing information
+    information_analysis = ""
+    if web_results:
+        high_quality_results = [r for r in web_results if r.get('credibility_score', 0.5) > 0.7]
+        information_analysis += f"High-quality web sources: {len(high_quality_results)}/{len(web_results)}\n"
+        
+        # Check for recent information
+        recent_indicators = ['2024', '2023', 'latest', 'recent', 'today', 'current']
+        recent_results = [r for r in web_results if any(indicator in r.get('content', '').lower() for indicator in recent_indicators)]
+        information_analysis += f"Recent information sources: {len(recent_results)}/{len(web_results)}\n"
     
-    # Add vision context if images are available
+    if mcp_results:
+        information_analysis += f"Computational results: {len(mcp_results)} tools executed\n"
+    
+    context_summary = f"""
+Current iteration: {iteration + 1}/{max_iterations}
+Previous actions: {previous_analysis.get('next_action', 'None')}
+
+INFORMATION QUALITY ANALYSIS:
+{information_analysis}
+
+SEARCH RESULTS SUMMARY:
+{json.dumps([{'title': r.get('title', ''), 'credibility': r.get('credibility_score', 0.5), 'type': r.get('search_type', 'original')} for r in web_results[:3]], indent=2) if web_results else "No web results yet"}
+"""
+    
+    # Create analysis prompt for LLM with browser-use detection
+    has_image_files = "Yes" if image_files else "No"
+    image_files_info = f"Image files: {', '.join([os.path.basename(f) for f in image_files])}" if image_files else "No image files detected"
+    web_results_summary = json.dumps(web_results[:2], indent=2) if web_results else "No web results yet"
+    mcp_results_summary = chr(10).join(mcp_results[:2]) if mcp_results else "No tool results yet"
+    
+    analysis_prompt = COORDINATOR_ANALYSIS_PROMPT.format(
+        query=query,
+        context_summary=context_summary,
+        has_image_files=has_image_files,
+        image_files_info=image_files_info,
+        web_results_summary=web_results_summary,
+        mcp_results_summary=mcp_results_summary
+    )
+    
+    # Add image context if images exist
     if image_files:
-        chunks.append(f"🖼️ **Vision enabled:** {len(image_files)} images detected")
+        analysis_prompt += f"\n\nIMAGES AVAILABLE: {', '.join([os.path.basename(f) for f in image_files])} in gaia_files directory. Please consider these images when analyzing the query."
     
-    # Check if we already have substantial results
-    has_web_results = len(web_results) > 0
-    has_mcp_results = len(mcp_results) > 0
-    has_browser_results = any("browser automation" in str(result) for result in mcp_results)
-    
-    # Analyze what we've already tried
-    previous_actions = []
-    if previous_analysis:
-        previous_actions.append(previous_analysis.get("next_action", "unknown"))
-    
-    chunks.append(f"📊 **Previous attempts:** {len(previous_actions)} iterations")
-    if has_web_results:
-        chunks.append(f"🌐 **Web results:** {len(web_results)} found")
-    if has_mcp_results:
-        chunks.append(f"🛠️ **Tool results:** {len(mcp_results)} executed")
-    if has_browser_results:
-        chunks.append(f"🌐 **Browser automation:** Already attempted")
-    
-    # Decision logic based on context
-    query_lower = query.lower()
-    
-    # If we have substantial results, synthesize
-    if (has_web_results and len(web_results) >= 3) or (has_mcp_results and len(mcp_results) >= 2):
-        chunks.append("✅ **Decision:** Sufficient results available")
+    try:
+        # Get LLM analysis with vision support
+        analysis_response = ""
+        for chunk in llm_provider._make_api_call(analysis_prompt, image_files):
+            analysis_response += chunk
+        
+        # Parse the JSON response
+        try:
+            # Extract JSON from the response (in case there's extra text)
+            json_start = analysis_response.find('{')
+            json_end = analysis_response.rfind('}') + 1
+            if json_start >= 0 and json_end > json_start:
+                json_str = analysis_response[json_start:json_end]
+                analysis = json.loads(json_str)
+            else:
+                raise ValueError("No JSON found in response")
+                
+        except (json.JSONDecodeError, ValueError) as e:
+            logger.error(f"Failed to parse LLM analysis: {e}")
+            # Fallback to simple heuristics with browser-use detection
+            query_lower = query.lower()
+            browser_keywords = ['youtube', 'video', 'watch', 'login', 'click', 'screenshot', 'social media', 'shopping', 'cart']
+            if any(keyword in query_lower for keyword in browser_keywords):
+                analysis = {"next_action": "browser_automation", "reasoning": "Fallback: Query contains browser automation keywords", "confidence": 0.8}
+            elif "weather" in query_lower or "news" in query_lower or "latest" in query_lower:
+                analysis = {"next_action": "web_search", "reasoning": "Fallback: Query needs current information", "confidence": 0.6}
+            else:
+                analysis = {"next_action": "create_tools", "reasoning": "Fallback: Query needs computation", "confidence": 0.6}
+        
+        next_action = analysis.get("next_action", "synthesize")
+        reasoning = analysis.get("reasoning", "No reasoning provided")
+        search_strategy = analysis.get("search_strategy", "broader")
+        missing_info = analysis.get("missing_info", "")
+        browser_capabilities = analysis.get("browser_capabilities_needed", [])
+        
+        # Map action to goto
+        action_map = {
+            "browser_automation": "browser_agent",
+            "web_search": "web_agent",
+            "create_tools": "mcp_agent", 
+            "synthesize": "synthesizer"
+        }
+        goto = action_map.get(next_action, "synthesizer")
+        
+        # Enhanced logging with strategy info
+        chunks = []
+        if image_files:
+            chunks.append(f"🖼️ **Vision enabled:** {len(image_files)} images detected")
+        
+        if next_action == "browser_automation":
+            chunks.append(f"🌐 **Coordinator:** {reasoning}")
+            chunks.append(f"🤖 **Browser Capabilities:** {', '.join(browser_capabilities)}")
+            chunks.append(f"→ Routing to browser automation")
+        elif next_action == "web_search":
+            chunks.append(f"🧠 **Coordinator:** {reasoning}")
+            chunks.append(f"🎯 **Strategy:** {search_strategy} search")
+            chunks.append(f"💡 **Missing:** {missing_info}")
+            chunks.append(f"→ Routing to {goto}")
+        else:
+            chunks.append(f"🧠 **Coordinator:** {reasoning}")
+            chunks.append(f"→ Routing to {goto}")
+        
+        # Store enhanced analysis for use by other agents
+        enhanced_analysis = analysis.copy()
+        enhanced_analysis.update({
+            "search_strategy": search_strategy,
+            "missing_info": missing_info,
+            "browser_capabilities_needed": browser_capabilities,
+            "iteration": iteration + 1
+        })
+        
         return Command(
             update={
-                "coordinator_analysis": {
-                    "reasoning": f"Sufficient results available (web: {len(web_results)}, tools: {len(mcp_results)})",
-                    "next_action": "synthesize"
-                },
-                "streaming_chunks": chunks + ["→ Routing to synthesizer"]
+                "coordinator_analysis": enhanced_analysis,
+                "iteration_count": iteration + 1,
+                "streaming_chunks": chunks
+            },
+            goto=goto
+        )
+        
+    except Exception as e:
+        logger.error(f"Coordinator error: {e}")
+        # Fallback to synthesizer if something goes wrong
+        return Command(
+            update={
+                "streaming_chunks": [f"🧠 **Coordinator Error:** {str(e)}", "→ Falling back to synthesizer"],
+                "iteration_count": iteration + 1
             },
             goto="synthesizer"
-        )
-    
-    # If browser automation was attempted but failed, try web search as fallback
-    if has_browser_results and any("failed" in str(result).lower() for result in mcp_results):
-        chunks.append("🔄 **Decision:** Browser failed, trying web search")
-        return Command(
-            update={
-                "coordinator_analysis": {
-                    "reasoning": "Browser automation failed, trying web search as fallback",
-                    "next_action": "web_search",
-                    "search_strategy": "broader"
-                },
-                "streaming_chunks": chunks + ["→ Routing to web agent (browser fallback)"]
-            },
-            goto="web_agent"
-        )
-    
-    # If we've tried web search but got few results, try targeted search
-    if has_web_results and len(web_results) < 3 and "web_search" in previous_actions:
-        chunks.append("🎯 **Decision:** Previous web search insufficient, trying targeted approach")
-        return Command(
-            update={
-                "coordinator_analysis": {
-                    "reasoning": "Previous web search yielded insufficient results, trying targeted search",
-                    "next_action": "web_search",
-                    "search_strategy": "targeted",
-                    "missing_info": "more specific and detailed information"
-                },
-                "streaming_chunks": chunks + ["→ Routing to web agent (targeted search)"]
-            },
-            goto="web_agent"
-        )
-    
-    # If we've tried tools but they failed, try web search
-    if has_mcp_results and any("failed" in str(result).lower() for result in mcp_results) and "create_tools" in previous_actions:
-        chunks.append("🌐 **Decision:** Tool creation failed, trying web search")
-        return Command(
-            update={
-                "coordinator_analysis": {
-                    "reasoning": "Tool creation failed, trying web search as alternative",
-                    "next_action": "web_search",
-                    "search_strategy": "broader"
-                },
-                "streaming_chunks": chunks + ["→ Routing to web agent (tool fallback)"]
-            },
-            goto="web_agent"
-        )
-    
-    # First-time routing based on query analysis
-    # Browser automation keywords
-    browser_keywords = ['youtube', 'video', 'watch', 'login', 'click', 'screenshot', 'social media', 'shopping', 'cart', 'navigate', 'go to']
-    if any(keyword in query_lower for keyword in browser_keywords):
-        chunks.append("🌐 **Decision:** Browser automation needed")
-        return Command(
-            update={
-                "coordinator_analysis": {
-                    "reasoning": "Query contains browser automation keywords",
-                    "next_action": "browser_automation"
-                },
-                "streaming_chunks": chunks + ["→ Routing to browser agent"]
-            },
-            goto="browser_agent"
-        )
-    
-    # Web search keywords
-    web_keywords = ['weather', 'news', 'latest', 'what is', 'how to', 'find', 'search', 'look up']
-    if any(keyword in query_lower for keyword in web_keywords):
-        chunks.append("🌐 **Decision:** Web search needed")
-        return Command(
-            update={
-                "coordinator_analysis": {
-                    "reasoning": "Query needs current information from web",
-                    "next_action": "web_search",
-                    "search_strategy": "broader"
-                },
-                "streaming_chunks": chunks + ["→ Routing to web agent"]
-            },
-            goto="web_agent"
-        )
-    
-    # Tool creation keywords
-    tool_keywords = ['calculate', 'compute', 'analyze', 'process', 'generate', 'create', 'build']
-    if any(keyword in query_lower for keyword in tool_keywords):
-        chunks.append("🛠️ **Decision:** Tool creation needed")
-        return Command(
-            update={
-                "coordinator_analysis": {
-                    "reasoning": "Query needs computational tools",
-                    "next_action": "create_tools"
-                },
-                "streaming_chunks": chunks + ["→ Routing to MCP agent"]
-            },
-            goto="mcp_agent"
-        )
-    
-    # Default to synthesizer if we have any results, otherwise try web search
-    if has_web_results or has_mcp_results:
-        chunks.append("✅ **Decision:** Default route with existing results")
-        return Command(
-            update={
-                "coordinator_analysis": {
-                    "reasoning": "Default route to synthesizer with existing results",
-                    "next_action": "synthesize"
-                },
-                "streaming_chunks": chunks + ["→ Routing to synthesizer"]
-            },
-            goto="synthesizer"
-        )
-    else:
-        chunks.append("🌐 **Decision:** No results yet, trying web search")
-        return Command(
-            update={
-                "coordinator_analysis": {
-                    "reasoning": "No results yet, trying web search as initial approach",
-                    "next_action": "web_search",
-                    "search_strategy": "broader"
-                },
-                "streaming_chunks": chunks + ["→ Routing to web agent"]
-            },
-            goto="web_agent"
         )
 
 
