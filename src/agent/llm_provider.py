@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import requests
+import base64
 from dotenv import load_dotenv
 
 class LLMProvider:
@@ -205,8 +206,8 @@ IMPORTANT:
 
         return prompt
     
-    def _make_api_call(self, prompt_text):
-        """Make direct API call to DeepWisdom Claude endpoint with streaming."""
+    def _make_api_call(self, prompt_text, image_files=None):
+        """Make direct API call to DeepWisdom Claude endpoint with streaming, supporting both text and vision."""
         
         headers = {
             "Authorization": f"Bearer {self.deepwisdom_api_key}",
@@ -214,13 +215,53 @@ IMPORTANT:
             "Accept": "text/event-stream"
         }
         
+        # Build content array for messages
+        content = [{"type": "text", "text": prompt_text}]
+        
+        # Add images if provided
+        if image_files:
+            logging.info(f"Processing {len(image_files)} image files for vision analysis")
+            for image_path in image_files:
+                if os.path.exists(image_path):
+                    try:
+                        logging.info(f"Loading image: {image_path}")
+                        with open(image_path, "rb") as image_file:
+                            image_data = base64.b64encode(image_file.read()).decode('utf-8')
+                            
+                        # Determine image type from file extension
+                        file_ext = os.path.splitext(image_path)[1].lower()
+                        if file_ext == '.png':
+                            image_type = "image/png"
+                        elif file_ext in ['.jpg', '.jpeg']:
+                            image_type = "image/jpeg"
+                        elif file_ext == '.gif':
+                            image_type = "image/gif"
+                        elif file_ext == '.webp':
+                            image_type = "image/webp"
+                        else:
+                            image_type = "image/png"  # Default
+                        
+                        content.append({
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:{image_type};base64,{image_data}"
+                            }
+                        })
+                        logging.info(f"Successfully added image {image_path} to content")
+                    except Exception as e:
+                        logging.error(f"Error processing image {image_path}: {e}")
+                else:
+                    logging.error(f"Image file not found: {image_path}")
+        
         payload = {
             "model": self.model_name,
-            "messages": [{"role": "user", "content": prompt_text}],
+            "messages": [{"role": "user", "content": content}],
             "temperature": 0.5,
             "max_tokens": 3000,
             "stream": True
         }
+        
+        logging.info(f"Making API call with {len(content)} content items (text + {len(image_files) if image_files else 0} images)")
         
         try:
             response = requests.post(
@@ -232,7 +273,9 @@ IMPORTANT:
             )
             
             if response.status_code != 200:
-                yield f"Error: API request failed with status {response.status_code}: {response.text}"
+                error_msg = f"Error: API request failed with status {response.status_code}: {response.text}"
+                logging.error(error_msg)
+                yield error_msg
                 return
             
             # Parse streaming response
@@ -261,9 +304,17 @@ IMPORTANT:
                             continue
                             
         except requests.exceptions.RequestException as e:
-            yield f"Error: Network request failed - {str(e)}"
+            error_msg = f"Error: Network request failed - {str(e)}"
+            logging.error(error_msg)
+            yield error_msg
         except Exception as e:
-            yield f"Error: API call failed - {str(e)}"
+            error_msg = f"Error: API call failed - {str(e)}"
+            logging.error(error_msg)
+            yield error_msg
+
+    def _make_vision_api_call(self, prompt_text, image_files):
+        """Make vision-enabled API call with image files."""
+        return self._make_api_call(prompt_text, image_files)
 
     def parse_intent(self, user_command):
         """Use the LLM to parse user intent and extract action/args from natural language."""

@@ -75,6 +75,8 @@ class GAIAAgent:
                 return self._process_text_file(file_path)
             elif file_name.lower().endswith('.pdb'):
                 return self._process_pdb_file(file_path)
+            elif file_name.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff')):
+                return self._process_image_file(file_path)
             else:
                 logger.warning(f"Unsupported file type: {file_name}")
                 return None
@@ -123,6 +125,8 @@ class GAIAAgent:
                 content = self._process_pdb_file(local_path)
             elif filename.lower().endswith('.txt'):
                 content = self._process_text_file(local_path)
+            elif filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff')):
+                content = self._process_image_file(local_path)
             else:
                 content = self._process_text_file(local_path)  # Default to text
             
@@ -159,6 +163,8 @@ class GAIAAgent:
                 content = self._process_pdb_file(tmp_file_path)
             elif filename.lower().endswith('.txt'):
                 content = self._process_text_file(tmp_file_path)
+            elif filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff')):
+                content = self._process_image_file(tmp_file_path)
             else:
                 content = self._process_text_file(tmp_file_path)  # Default to text
             
@@ -221,9 +227,54 @@ class GAIAAgent:
             logger.error(f"Error reading PDB file {file_path}: {e}")
             return f"Error reading PDB file: {str(e)}"
     
+    def _process_image_file(self, file_path: str) -> str:
+        """Process image file - provide basic image information for MCP vision analysis"""
+        try:
+            from PIL import Image
+            
+            # Get basic image information
+            image = Image.open(file_path)
+            width, height = image.size
+            format_type = image.format
+            mode = image.mode
+            
+            image_info = f"""Image file: {os.path.basename(file_path)}
+Image details:
+- Format: {format_type}
+- Dimensions: {width}x{height} pixels
+- Color mode: {mode}
+- File size: {os.path.getsize(file_path)} bytes
+- Full path: {file_path}
+
+This is an image file that may contain visual information relevant to the question.
+The MCP agent can create a vision analysis tool to extract text or analyze the image content if needed."""
+            
+            return image_info
+                
+        except Exception as e:
+            logger.error(f"Error processing image file {file_path}: {e}")
+            return f"Image file: {os.path.basename(file_path)}\nError processing image: {str(e)}"
+    
     def _create_file_context_prompt(self, question: str, file_content: str) -> str:
         """Create a prompt that includes file content for the agent"""
-        return f"""You have access to a file that contains relevant information for answering the question.
+        
+        # Check if this is an image file
+        if "Image file:" in file_content and "MCP agent can create a vision analysis tool" in file_content:
+            return f"""You have access to an image file that contains relevant information for answering the question.
+
+Question: {question}
+
+Image File Information:
+{file_content}
+
+IMPORTANT: This is an image file. If the question requires analyzing the visual content of this image, you should:
+1. Use the MCP agent to create a vision analysis tool
+2. The tool can use GPT-4 Vision or similar to analyze the image
+3. Extract text, identify objects, or answer questions about the visual content
+
+Please analyze the question and determine if you need to create a vision analysis tool to process this image."""
+        else:
+            return f"""You have access to a file that contains relevant information for answering the question.
 
 Question: {question}
 

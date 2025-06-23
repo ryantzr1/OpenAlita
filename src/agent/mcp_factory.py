@@ -558,7 +558,7 @@ def {function_name}(*args, **kwargs):
                             logger.warning(f"Failed to import/install module: {module_name}")
         
         # Always include commonly used modules
-        common_modules = ['os', 're', 'sys', 'json', 'datetime', 'time', 'math', 'random']
+        common_modules = ['os', 're', 'sys', 'json', 'datetime', 'time', 'math', 'random', 'PIL']
         for module_name in common_modules:
             if module_name not in safe_globals:
                 module = self._import_with_auto_install(module_name)
