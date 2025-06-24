@@ -13,8 +13,11 @@ AVAILABLE INFORMATION:
 Web Search Results ({web_results_count} results):
 {web_results_summary}
 
-Tool Execution Results ({mcp_results_count} results):
+Tool Execution Results (results):
 {mcp_results_summary}
+
+Browser Use (results):
+{mcp_execution_results}
 
 Current iteration: {iteration}/{max_iter}
 

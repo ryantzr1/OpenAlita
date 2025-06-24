@@ -9,7 +9,14 @@ SYNTHESIS_PROMPT = """Create a comprehensive answer for: {query}
 Web Search Results:
 {web_results_summary}
 
-Tool Results:
+Tool/Browser Results:
 {mcp_results_summary}
 
-Provide a clear, helpful answer. If images are mentioned in the context, analyze them using your vision capabilities.""" 
+IMPORTANT INSTRUCTIONS:
+- If the tool/browser results contain specific answers, data, or findings, USE THEM DIRECTLY as your answer
+- Trust the tool results - they have already done the research/automation work
+- Do NOT second-guess or add disclaimers about tool results
+- If tools found specific information (times, names, data), present it confidently
+- Only mention limitations if the tools explicitly failed or returned no data
+
+Provide a clear, direct answer based on the available information.""" 

@@ -268,8 +268,8 @@ IMPORTANT:
         payload = {
             "model": self.model_name,
             "messages": [{"role": "user", "content": content}],
-            "temperature": 0.5,
-            "max_tokens": 3000,
+            "temperature": 0.1,
+            "max_tokens": 9000,
             "stream": True
         }
         

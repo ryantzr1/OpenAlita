@@ -42,47 +42,35 @@ RESPONSE FORMAT:
 
 Analyze: {query}"""
 
-TOOL_SCRIPT_GENERATION_PROMPT = """Create a SIMPLE Python function for this tool:
+TOOL_SCRIPT_GENERATION_PROMPT = """Create a simple Python function for this specific task:
 
 TOOL NAME: {tool_name}
 DESCRIPTION: {description}
 PURPOSE: {purpose}
-QUERY: {query}
+USER QUERY: {query}
 
-CRITICAL RULES:
-1. **KEEP IT SIMPLE** - Use basic Python operations
-2. **ONE CLEAR PURPOSE** - Do one thing well
-3. **BUILT-IN ONLY** - Use Python standard library (re, json, math, etc.)
-4. **NO EXTERNAL APIS** - Don't call OpenAI, Google, etc.
-5. **EXTRACT FROM QUERY** - Get data from the query parameter
+Create a focused, single-purpose function:
 
-FUNCTION TEMPLATE:
 ```python
 # MCP Name: {tool_name}
 # Description: {description}
 # Arguments: query (string) - the user query to process
-# Returns: what the function returns
-# Requires: re (or other built-in modules)
-
-import re
+# Returns: processed result
+# Requires: re, json, math (or other built-in modules only)
 
 def {tool_name}(query=""):
     try:
-        # Simple, focused logic here
-        # Extract what you need from query
-        # Use basic Python operations
+        # Simple, focused processing logic
+        # Extract relevant information from query
+        # Perform the specific calculation/processing
+        # Return clear result
+        
         return result
     except Exception as e:
         return f"Error: {{str(e)}}"
 ```
 
-EXAMPLES:
-- For counting: Use simple loops and counters
-- For text extraction: Use re.findall() or string operations
-- For calculations: Use basic math operations
-- For data parsing: Use string split() and basic processing
-
-Create a focused, simple function that does exactly what's needed - no more, no less."""
+Focus on simplicity and clarity. The function should do ONE thing well."""
 
 BROWSER_MCP_ANALYSIS_PROMPT = """Analyze if this browser task needs MCP tools for data processing.
 

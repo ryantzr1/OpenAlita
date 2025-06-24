@@ -547,13 +547,7 @@ def evaluator_node(state: State) -> Command[Literal["coordinator", "synthesizer"
     
     # Check if browser automation was successful
     logger.info(f"Evaluator checking browser results: {mcp_results}")
-    browser_success = any(
-        "browser automation completed" in str(result) or 
-        "Successfully searched for and accessed" in str(result) or
-        "Successfully searched for and played" in str(result) or
-        "Task completed successfully" in str(result)
-        for result in mcp_results
-    )
+    browser_success = mcp_results
     browser_failed = any("browser automation failed" in str(result) for result in mcp_results)
     
     logger.info(f"Browser success detected: {browser_success}")
@@ -569,7 +563,7 @@ def evaluator_node(state: State) -> Command[Literal["coordinator", "synthesizer"
             update={
                 "answer_completeness": 0.95,
                 "confidence_score": 0.95,
-                "streaming_chunks": chunks
+                "mcp_execution_results": mcp_results
             },
             goto="synthesizer"
         )
@@ -582,8 +576,8 @@ def evaluator_node(state: State) -> Command[Literal["coordinator", "synthesizer"
         query=query,
         web_results_count=len(web_results),
         web_results_summary=web_results_summary,
-        mcp_results_count=len(mcp_results),
         mcp_results_summary=mcp_results_summary,
+        mcp_execution_results=mcp_results,
         iteration=iteration,
         max_iter=max_iter
     )
