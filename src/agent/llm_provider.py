@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import requests
+import base64
 from dotenv import load_dotenv
 
 class LLMProvider:
@@ -90,7 +91,7 @@ Arguments Details: {args_details}
 
 Original User Command: {user_command}
 
-CRITICAL: You MUST generate a REUSABLE, PARAMETERIZED function that gets the current command dynamically. DO NOT hardcode any command strings.
+CRITICAL: You MUST generate a REUSABLE, PARAMETERIZED function that accepts the query as a parameter. DO NOT rely on global variables.
 
 IMPORTANT FUNCTION NAMING RULES:
 - Use ONLY ASCII characters (a-z, A-Z, 0-9, underscore)
@@ -98,6 +99,13 @@ IMPORTANT FUNCTION NAMING RULES:
 - NO spaces, hyphens, or special characters in function names
 - Use snake_case naming convention
 - Keep names descriptive but concise
+
+VISION TASK GUIDELINES:
+- **DO NOT** import or use openai, PIL, or other external vision libraries
+- **DO NOT** try to access image files directly or make API calls
+- **DO** return a description of what the tool would analyze or extract
+- **DO** mention that the system's built-in vision capabilities will handle the actual image processing
+- The system already has vision capabilities built into LLMProvider that can analyze images automatically
 
 Please generate a complete, functional Python MCP script that:
 
@@ -111,41 +119,36 @@ Please generate a complete, functional Python MCP script that:
    
    [import statements if needed]
    
-   def {mcp_name}():
-       # Get the current command from the global context
-       import builtins
-       current_command = getattr(builtins, '_current_user_command', '')
-       
-       # EXTRACT PARAMETERS FROM THE CURRENT COMMAND
+   def {mcp_name}(query=""):
+       # EXTRACT PARAMETERS FROM THE QUERY PARAMETER
        # DO NOT HARDCODE VALUES
+       # DO NOT RELY ON GLOBAL VARIABLES
        return "result as string"
    ```
 
 2. **CRITICAL Requirements for Reusability:**
-   - Get the current command using: `current_command = getattr(builtins, '_current_user_command', '')`
-   - Extract parameters from this current_command variable
+   - Accept the query as a parameter: `def {mcp_name}(query=""):`
+   - Extract parameters from this query parameter
    - DO NOT hardcode any command strings or specific parameters
    - Make the function work for ANY similar command with different parameters
+   - DO NOT use global variables or builtins._current_user_command
 
 3. **Parameter Extraction Example for GitHub repositories:**
    ```python
-   def github_stars():
+   def github_stars(query=""):
        import re
        import requests
-       import builtins
        
        try:
-           # Get the current command from global context
-           current_command = getattr(builtins, '_current_user_command', '')
-           if not current_command:
-               return "Error: No command provided"
+           if not query:
+               return "Error: No query provided"
            
-           # Extract repository from the current command
+           # Extract repository from the query parameter
            repo_pattern = r'([a-zA-Z0-9_-]+)/([a-zA-Z0-9_.-]+)'
-           repo_match = re.search(repo_pattern, current_command)
+           repo_match = re.search(repo_pattern, query)
            
            if not repo_match:
-               return "Could not find a valid GitHub repository in the command"
+               return "Could not find a valid GitHub repository in the query"
            
            owner, repo_name = repo_match.groups()
            repo_full = f"{{owner}}/{{repo_name}}"
@@ -172,20 +175,28 @@ Please generate a complete, functional Python MCP script that:
 
    For weather queries:
    ```python
-   # Get current command and extract location
-   current_command = getattr(builtins, '_current_user_command', '')
-   words = current_command.lower().split()
+   # Get query and extract location
+   words = query.lower().split()
    location_words = [w for w in words if w not in ['weather', 'in', 'for', 'at', 'the', 'what', 'is']]
    location = location_words[0] if location_words else "London"
    ```
 
    For greetings:
    ```python
-   # Get current command and extract name
-   current_command = getattr(builtins, '_current_user_command', '')
-   words = current_command.split()
+   # Get query and extract name
+   words = query.split()
    name_words = [w for w in words if w.lower() not in ['greet', 'hello', 'hi', 'say']]
    name = name_words[0] if name_words else "friend"
+   ```
+
+   For calculations:
+   ```python
+   # Extract numbers from query
+   import re
+   numbers = re.findall(r'\d+(?:\.\d+)?', query)
+   if len(numbers) >= 2:
+       length = float(numbers[0])
+       width = float(numbers[1])
    ```
 
 CRITICAL FUNCTION NAMING REQUIREMENTS:
@@ -197,16 +208,18 @@ CRITICAL FUNCTION NAMING REQUIREMENTS:
 
 IMPORTANT: 
 - Generate ONLY the complete MCP script
-- ALWAYS use `current_command = getattr(builtins, '_current_user_command', '')` to get the current command
+- ALWAYS use `def {mcp_name}(query=""):` as the function signature
 - DO NOT hardcode any command strings or parameters
+- DO NOT use global variables or builtins._current_user_command
 - Make the function truly reusable for different commands with different parameters
 - Use ONLY ASCII characters in function names
+- For vision tasks: Return descriptions, not implementation details
 """
 
         return prompt
     
-    def _make_api_call(self, prompt_text):
-        """Make direct API call to DeepWisdom Claude endpoint with streaming."""
+    def _make_api_call(self, prompt_text, image_files=None):
+        """Make direct API call to DeepWisdom Claude endpoint with streaming, supporting both text and vision."""
         
         headers = {
             "Authorization": f"Bearer {self.deepwisdom_api_key}",
@@ -214,13 +227,53 @@ IMPORTANT:
             "Accept": "text/event-stream"
         }
         
+        # Build content array for messages
+        content = [{"type": "text", "text": prompt_text}]
+        
+        # Add images if provided
+        if image_files:
+            logging.info(f"Processing {len(image_files)} image files for vision analysis")
+            for image_path in image_files:
+                if os.path.exists(image_path):
+                    try:
+                        logging.info(f"Loading image: {image_path}")
+                        with open(image_path, "rb") as image_file:
+                            image_data = base64.b64encode(image_file.read()).decode('utf-8')
+                            
+                        # Determine image type from file extension
+                        file_ext = os.path.splitext(image_path)[1].lower()
+                        if file_ext == '.png':
+                            image_type = "image/png"
+                        elif file_ext in ['.jpg', '.jpeg']:
+                            image_type = "image/jpeg"
+                        elif file_ext == '.gif':
+                            image_type = "image/gif"
+                        elif file_ext == '.webp':
+                            image_type = "image/webp"
+                        else:
+                            image_type = "image/png"  # Default
+                        
+                        content.append({
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:{image_type};base64,{image_data}"
+                            }
+                        })
+                        logging.info(f"Successfully added image {image_path} to content")
+                    except Exception as e:
+                        logging.error(f"Error processing image {image_path}: {e}")
+                else:
+                    logging.error(f"Image file not found: {image_path}")
+        
         payload = {
             "model": self.model_name,
-            "messages": [{"role": "user", "content": prompt_text}],
-            "temperature": 0.5,
-            "max_tokens": 3000,
+            "messages": [{"role": "user", "content": content}],
+            "temperature": 0.1,
+            "max_tokens": 9000,
             "stream": True
         }
+        
+        logging.info(f"Making API call with {len(content)} content items (text + {len(image_files) if image_files else 0} images)")
         
         try:
             response = requests.post(
@@ -232,7 +285,9 @@ IMPORTANT:
             )
             
             if response.status_code != 200:
-                yield f"Error: API request failed with status {response.status_code}: {response.text}"
+                error_msg = f"Error: API request failed with status {response.status_code}: {response.text}"
+                logging.error(error_msg)
+                yield error_msg
                 return
             
             # Parse streaming response
@@ -261,9 +316,17 @@ IMPORTANT:
                             continue
                             
         except requests.exceptions.RequestException as e:
-            yield f"Error: Network request failed - {str(e)}"
+            error_msg = f"Error: Network request failed - {str(e)}"
+            logging.error(error_msg)
+            yield error_msg
         except Exception as e:
-            yield f"Error: API call failed - {str(e)}"
+            error_msg = f"Error: API call failed - {str(e)}"
+            logging.error(error_msg)
+            yield error_msg
+
+    def _make_vision_api_call(self, prompt_text, image_files):
+        """Make vision-enabled API call with image files."""
+        return self._make_api_call(prompt_text, image_files)
 
     def parse_intent(self, user_command):
         """Use the LLM to parse user intent and extract action/args from natural language."""
@@ -312,3 +375,14 @@ Respond ONLY with a JSON object in this exact format:
                 
         except Exception as e:
             return None, []
+
+    def simple_completion(self, prompt, image_files=None):
+        """
+        Get a single string completion from the LLM (non-streaming).
+        """
+        response_chunks = []
+        for chunk in self._make_api_call(prompt, image_files):
+            if isinstance(chunk, str) and chunk.startswith("Error:"):
+                raise RuntimeError(chunk)
+            response_chunks.append(chunk)
+        return "".join(response_chunks).strip()

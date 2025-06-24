@@ -57,12 +57,17 @@ class MCPRegistry:
             )
             
             self.tools[name] = tool
+            logger.info(f"Added tool '{name}' to memory registry (total: {len(self.tools)})")
+            
+            # Save to file
             self.save_registry()
+            
             logger.info(f"Registered tool: {name}")
+            logger.info(f"Tool code for {name}:\n{script_content}\n{'-'*40}")
             return True
             
         except Exception as e:
-            logger.error(f"Failed to register tool {name}: {e}")
+            logger.error(f"Failed to register tool {name}: {e}", exc_info=True)
             return False
     
     def get_tool(self, name: str) -> Optional[MCPTool]:
@@ -102,8 +107,8 @@ class MCPRegistry:
             # Check if the function accepts parameters
             sig = inspect.signature(tool.function)
             
-            # If the function has no parameters (other than self for methods), call without arguments
-            if len(sig.parameters) == 0 or (len(sig.parameters) == 1 and 'self' in sig.parameters):
+            # If the function has no parameters, call without arguments
+            if len(sig.parameters) == 0:
                 result = tool.function()
                 logger.info(f"Executed tool '{name}' successfully (no args)")
                 return result
@@ -180,31 +185,76 @@ class MCPRegistry:
         return [tool.name for tool in matching_tools[:3]]  # Limit to 3 tools
     
     def load_registry(self):
-        """Load tools from registry file"""
+        """Load tools from registry file and recreate functions from script_content."""
         if not os.path.exists(self.registry_file):
             logger.info("No existing registry file found")
             return
-        
+
         try:
             with open(self.registry_file, 'r') as f:
                 data = json.load(f)
-            
-            # Note: Functions can't be deserialized, so we only load metadata
-            # Functions need to be recreated from script_content
+
             logger.info(f"Loaded {len(data)} tool metadata entries from registry")
-            
+
+            # Use MCPFactory to recreate functions from script_content
+            from .mcp_factory import MCPFactory
+            mcp_factory = MCPFactory()
+
+            for tool_data in data:
+                name = tool_data.get('name')
+                script_content = tool_data.get('script_content', '')
+                metadata = tool_data.get('metadata', {})
+
+                if name and script_content:
+                    function, _ = mcp_factory.create_mcp_from_script(name, script_content)
+                    if function:
+                        tool = MCPTool(
+                            name=name,
+                            description=tool_data.get('description', ''),
+                            function=function,
+                            metadata=metadata,
+                            script_content=script_content,
+                            created_at=datetime.fromisoformat(tool_data.get('created_at', datetime.now().isoformat())),
+                            usage_count=tool_data.get('usage_count', 0),
+                            last_used=datetime.fromisoformat(tool_data.get('last_used')) if tool_data.get('last_used') else None
+                        )
+                        self.tools[name] = tool
+                        logger.info(f"Loaded and recreated tool: {name}")
+                    else:
+                        logger.warning(f"Failed to recreate function for tool: {name}")
+                else:
+                    logger.warning(f"Skipping tool with missing name or script_content: {tool_data}")
+
+            logger.info(f"Successfully loaded {len(self.tools)} tools from registry file")
+
         except Exception as e:
-            logger.error(f"Failed to load registry: {e}")
+            logger.error(f"Failed to load registry: {e}", exc_info=True)
     
     def save_registry(self):
         """Save tools metadata to registry file"""
         try:
             data = [tool.to_dict() for tool in self.tools.values()]
+            logger.info(f"Attempting to save {len(data)} tools to registry file: {self.registry_file}")
+            logger.info(f"Tools to save: {[tool.name for tool in self.tools.values()]}")
+            
             with open(self.registry_file, 'w') as f:
                 json.dump(data, f, indent=2)
-            logger.debug(f"Saved {len(data)} tools to registry")
+            
+            logger.info(f"Successfully saved {len(data)} tools to registry file")
+            
+            # Verify the file was written
+            if os.path.exists(self.registry_file):
+                file_size = os.path.getsize(self.registry_file)
+                logger.info(f"Registry file size: {file_size} bytes")
+                if file_size == 0:
+                    logger.warning("Registry file is empty after save!")
+                else:
+                    logger.info("Registry file contains data")
+            else:
+                logger.error("Registry file does not exist after save!")
+                
         except Exception as e:
-            logger.error(f"Failed to save registry: {e}")
+            logger.error(f"Failed to save registry: {e}", exc_info=True)
     
     def log_registered_tools(self):
         """Log all registered tools for debugging"""
@@ -236,4 +286,35 @@ class MCPRegistry:
                 }
                 for tool in self.tools.values()
             ]
-        } 
+        }
+
+    def check_registry_status(self):
+        """Check the current status of the registry"""
+        logger.info(f"=== MCP Registry Status Check ===")
+        logger.info(f"Tools in memory: {len(self.tools)}")
+        logger.info(f"Registry file: {self.registry_file}")
+        logger.info(f"Registry file exists: {os.path.exists(self.registry_file)}")
+        
+        if os.path.exists(self.registry_file):
+            file_size = os.path.getsize(self.registry_file)
+            logger.info(f"Registry file size: {file_size} bytes")
+            
+            if file_size > 0:
+                try:
+                    with open(self.registry_file, 'r') as f:
+                        data = json.load(f)
+                    logger.info(f"Registry file contains {len(data)} tool entries")
+                except Exception as e:
+                    logger.error(f"Error reading registry file: {e}")
+            else:
+                logger.warning("Registry file is empty")
+        
+        # List tools in memory
+        if self.tools:
+            logger.info("Tools in memory:")
+            for name, tool in self.tools.items():
+                logger.info(f"  - {name}: {tool.description}")
+        else:
+            logger.info("No tools in memory")
+        
+        logger.info("=" * 40) 

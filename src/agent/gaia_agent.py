@@ -13,10 +13,16 @@ import json
 import logging
 import time
 import os
+import sys
 import pandas as pd
 from typing import Dict, Any, List, Generator, Optional
 from dataclasses import dataclass
 import uuid
+
+# Add project root to sys.path for imports
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
 from .llm_provider import LLMProvider
 from .web_agent import WebAgent
@@ -75,6 +81,18 @@ class GAIAAgent:
                 return self._process_text_file(file_path)
             elif file_name.lower().endswith('.pdb'):
                 return self._process_pdb_file(file_path)
+            elif file_name.lower().endswith('.pdf'):
+                return self._process_pdf_file(file_path)
+            elif file_name.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff')):
+                return self._process_image_file(file_path)
+            elif file_name.lower().endswith(('.mp3', '.wav', '.m4a', '.flac', '.ogg', '.aac')):
+                # Transcribe audio using OpenAI Whisper API
+                from src.utils import transcribe_audio_openai
+                transcript = transcribe_audio_openai(file_path)
+                if transcript:
+                    return f"[AUDIO TRANSCRIPT]\n{transcript}"
+                else:
+                    return None
             else:
                 logger.warning(f"Unsupported file type: {file_name}")
                 return None
@@ -123,6 +141,8 @@ class GAIAAgent:
                 content = self._process_pdb_file(local_path)
             elif filename.lower().endswith('.txt'):
                 content = self._process_text_file(local_path)
+            elif filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff')):
+                content = self._process_image_file(local_path)
             else:
                 content = self._process_text_file(local_path)  # Default to text
             
@@ -159,6 +179,8 @@ class GAIAAgent:
                 content = self._process_pdb_file(tmp_file_path)
             elif filename.lower().endswith('.txt'):
                 content = self._process_text_file(tmp_file_path)
+            elif filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff')):
+                content = self._process_image_file(tmp_file_path)
             else:
                 content = self._process_text_file(tmp_file_path)  # Default to text
             
@@ -221,16 +243,63 @@ class GAIAAgent:
             logger.error(f"Error reading PDB file {file_path}: {e}")
             return f"Error reading PDB file: {str(e)}"
     
+    def _process_image_file(self, file_path: str) -> str:
+        """Process image file - provide basic image information for MCP vision analysis"""
+        try:
+            from PIL import Image
+            
+            # Get basic image information
+            image = Image.open(file_path)
+            width, height = image.size
+            format_type = image.format
+            mode = image.mode
+            
+            image_info = f"""Image file: {os.path.basename(file_path)}
+Image details:
+- Format: {format_type}
+- Dimensions: {width}x{height} pixels
+- Color mode: {mode}
+- File size: {os.path.getsize(file_path)} bytes
+- Full path: {file_path}
+
+This is an image file that may contain visual information relevant to the question.
+The MCP agent can create a vision analysis tool to extract text or analyze the image content if needed."""
+            
+            return image_info
+                
+        except Exception as e:
+            logger.error(f"Error processing image file {file_path}: {e}")
+            return f"Image file: {os.path.basename(file_path)}\nError processing image: {str(e)}"
+    
     def _create_file_context_prompt(self, question: str, file_content: str) -> str:
         """Create a prompt that includes file content for the agent"""
-        return f"""You have access to a file that contains relevant information for answering the question.
+        
+        # Check if this is an image file
+        if "Image file:" in file_content and "MCP agent can create a vision analysis tool" in file_content:
+            return f"""You have access to an image file that contains relevant information for answering the question.
+
+Question: {question}
+
+Image File Information:
+{file_content}
+
+IMPORTANT: This is an image file. If the question requires analyzing the visual content of this image, you should:
+1. Use the MCP agent to create a vision analysis tool
+2. The tool can use GPT-4 Vision or similar to analyze the image
+3. Extract text, identify objects, or answer questions about the visual content
+
+Please analyze the question and determine if you need to create a vision analysis tool to process this image."""
+        else:
+            return f"""You have access to a file that contains relevant information for answering the question.
 
 Question: {question}
 
 File Content:
 {file_content}
 
-Please analyze the file content and answer the question based on the information provided in the file."""
+IMPORTANT: When extracting information from the file content, please preserve the exact names, descriptions, and terminology as they appear in the source. Do not simplify or abbreviate terms unless specifically requested. Pay attention to descriptive adjectives and qualifiers.
+
+Please analyze the file content and answer the question based on the information provided in the file, maintaining the exact terminology used."""
     
     def process_gaia_question(self, question: GAIAQuestion) -> Generator[str, None, None]:
         """Process a GAIA question with streaming output"""
@@ -242,27 +311,49 @@ Please analyze the file content and answer the question based on the information
         yield f"Level: {question.level}\n"
         
         # Handle file attachment
+        specific_image_file = None
+        enhanced_question = question.question  # Default to original question
+        
         if question.file_name:
             yield f"File: {question.file_name}\n"
-            file_content = self._load_file_content(question.file_name)
-            if file_content:
-                yield f"📁 File loaded successfully ({len(file_content)} characters)\n"
-                # Create enhanced prompt with file content
-                enhanced_question = self._create_file_context_prompt(question.question, file_content)
+            
+            # Check if it's an image file
+            if question.file_name.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff')):
+                # For image files, get the full path to pass to LangGraph
+                image_path = os.path.join(self.gaia_files_dir, question.file_name)
+                if os.path.exists(image_path):
+                    specific_image_file = image_path
+                    yield f"📁 Image file found: {question.file_name}\n"
+                else:
+                    yield f"⚠️ Warning: Image file not found: {image_path}\n"
+                    specific_image_file = None
             else:
-                yield f"⚠️ Warning: Could not load file {question.file_name}\n"
-                enhanced_question = question.question
-        else:
-            enhanced_question = question.question
+                # For non-image files, load content as before
+                file_content = self._load_file_content(question.file_name)
+                if file_content:
+                    yield f"📁 File loaded successfully ({len(file_content)} characters)\n"
+                    # Create enhanced prompt with file content
+                    enhanced_question = self._create_file_context_prompt(question.question, file_content)
+                else:
+                    yield f"⚠️ Warning: Could not load file {question.file_name}\n"
+                    enhanced_question = question.question
         
         yield "\nLet me think through this step by step:\n\n"
         
         try:
             # Use LangGraph workflow for comprehensive analysis
+            # Pass the specific image file if available
             full_response = ""
-            for chunk in self.langgraph_coordinator.process_query_streaming(enhanced_question):
-                full_response += chunk
-                yield chunk
+            if specific_image_file:
+                # Pass the specific image file to LangGraph
+                for chunk in self.langgraph_coordinator.process_query_streaming(enhanced_question, specific_image_file):
+                    full_response += chunk
+                    yield chunk
+            else:
+                # No specific image, use normal processing
+                for chunk in self.langgraph_coordinator.process_query_streaming(enhanced_question):
+                    full_response += chunk
+                    yield chunk
             
             # Extract final answer using LLM with GAIA format
             final_answer = self._extract_gaia_final_answer(question.question, full_response)

@@ -9,7 +9,6 @@ from .llm_provider import LLMProvider
 from .mcp_factory import MCPFactory
 from .web_agent import WebAgent
 from .langgraph_workflow import LangGraphCoordinator
-from .streaming_coordinator import StreamingCoordinator, StreamEventType
 
 # Configure logging
 logger = logging.getLogger('alita.agent')
