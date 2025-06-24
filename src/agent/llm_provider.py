@@ -91,7 +91,7 @@ Arguments Details: {args_details}
 
 Original User Command: {user_command}
 
-CRITICAL: You MUST generate a REUSABLE, PARAMETERIZED function that gets the current command dynamically. DO NOT hardcode any command strings.
+CRITICAL: You MUST generate a REUSABLE, PARAMETERIZED function that accepts the query as a parameter. DO NOT rely on global variables.
 
 IMPORTANT FUNCTION NAMING RULES:
 - Use ONLY ASCII characters (a-z, A-Z, 0-9, underscore)
@@ -119,41 +119,36 @@ Please generate a complete, functional Python MCP script that:
    
    [import statements if needed]
    
-   def {mcp_name}():
-       # Get the current command from the global context
-       import builtins
-       current_command = getattr(builtins, '_current_user_command', '')
-       
-       # EXTRACT PARAMETERS FROM THE CURRENT COMMAND
+   def {mcp_name}(query=""):
+       # EXTRACT PARAMETERS FROM THE QUERY PARAMETER
        # DO NOT HARDCODE VALUES
+       # DO NOT RELY ON GLOBAL VARIABLES
        return "result as string"
    ```
 
 2. **CRITICAL Requirements for Reusability:**
-   - Get the current command using: `current_command = getattr(builtins, '_current_user_command', '')`
-   - Extract parameters from this current_command variable
+   - Accept the query as a parameter: `def {mcp_name}(query=""):`
+   - Extract parameters from this query parameter
    - DO NOT hardcode any command strings or specific parameters
    - Make the function work for ANY similar command with different parameters
+   - DO NOT use global variables or builtins._current_user_command
 
 3. **Parameter Extraction Example for GitHub repositories:**
    ```python
-   def github_stars():
+   def github_stars(query=""):
        import re
        import requests
-       import builtins
        
        try:
-           # Get the current command from global context
-           current_command = getattr(builtins, '_current_user_command', '')
-           if not current_command:
-               return "Error: No command provided"
+           if not query:
+               return "Error: No query provided"
            
-           # Extract repository from the current command
+           # Extract repository from the query parameter
            repo_pattern = r'([a-zA-Z0-9_-]+)/([a-zA-Z0-9_.-]+)'
-           repo_match = re.search(repo_pattern, current_command)
+           repo_match = re.search(repo_pattern, query)
            
            if not repo_match:
-               return "Could not find a valid GitHub repository in the command"
+               return "Could not find a valid GitHub repository in the query"
            
            owner, repo_name = repo_match.groups()
            repo_full = f"{{owner}}/{{repo_name}}"
@@ -176,43 +171,32 @@ Please generate a complete, functional Python MCP script that:
            return f"Error in github_stars: {{str(e)}}"
    ```
 
-4. **Vision Task Example:**
-   ```python
-   def image_analyzer():
-       import builtins
-       
-       try:
-           # Get the current command from global context
-           current_command = getattr(builtins, '_current_user_command', '')
-           if not current_command:
-               return "Error: No command provided"
-           
-           # Return description of what would be analyzed
-           # The system's built-in vision capabilities will handle the actual image processing
-           return "This tool would analyze the image to extract fractions with '/' symbols and their corresponding answers, maintaining the order of appearance as requested in the command."
-               
-       except Exception as e:
-           return f"Error in image_analyzer: {{str(e)}}"
-   ```
-
-5. **Other Parameter Extraction Examples:**
+4. **Other Parameter Extraction Examples:**
 
    For weather queries:
    ```python
-   # Get current command and extract location
-   current_command = getattr(builtins, '_current_user_command', '')
-   words = current_command.lower().split()
+   # Get query and extract location
+   words = query.lower().split()
    location_words = [w for w in words if w not in ['weather', 'in', 'for', 'at', 'the', 'what', 'is']]
    location = location_words[0] if location_words else "London"
    ```
 
    For greetings:
    ```python
-   # Get current command and extract name
-   current_command = getattr(builtins, '_current_user_command', '')
-   words = current_command.split()
+   # Get query and extract name
+   words = query.split()
    name_words = [w for w in words if w.lower() not in ['greet', 'hello', 'hi', 'say']]
    name = name_words[0] if name_words else "friend"
+   ```
+
+   For calculations:
+   ```python
+   # Extract numbers from query
+   import re
+   numbers = re.findall(r'\d+(?:\.\d+)?', query)
+   if len(numbers) >= 2:
+       length = float(numbers[0])
+       width = float(numbers[1])
    ```
 
 CRITICAL FUNCTION NAMING REQUIREMENTS:
@@ -224,8 +208,9 @@ CRITICAL FUNCTION NAMING REQUIREMENTS:
 
 IMPORTANT: 
 - Generate ONLY the complete MCP script
-- ALWAYS use `current_command = getattr(builtins, '_current_user_command', '')` to get the current command
+- ALWAYS use `def {mcp_name}(query=""):` as the function signature
 - DO NOT hardcode any command strings or parameters
+- DO NOT use global variables or builtins._current_user_command
 - Make the function truly reusable for different commands with different parameters
 - Use ONLY ASCII characters in function names
 - For vision tasks: Return descriptions, not implementation details

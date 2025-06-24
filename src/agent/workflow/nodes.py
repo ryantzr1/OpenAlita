@@ -426,10 +426,7 @@ def mcp_agent_node(state: State) -> Command[Literal["evaluator"]]:
                     tool_name=tool_name,
                     description=description,
                     purpose=purpose,
-                    query=query,
-                    specialized_capabilities=req.get('specialized_capabilities', []),
-                    api_endpoints=req.get('api_endpoints', []),
-                    external_services=req.get('external_services', [])
+                    query=query
                 )
 
                 # Add image context if images exist
@@ -444,20 +441,25 @@ def mcp_agent_node(state: State) -> Command[Literal["evaluator"]]:
                 # Log the generated script for debugging
                 logger.info(f"Generated script for {tool_name}:")
                 logger.info(f"Script content:\n{script_content}")
+                logger.info(f"Script content length: {len(script_content)} characters")
                 
                 # Create the function
+                logger.info(f"Attempting to create function for {tool_name}...")
                 function, metadata = mcp_factory.create_mcp_from_script(tool_name, script_content)
                 
                 if function:
                     # Log function details
                     logger.info(f"Function {tool_name} created successfully")
+                    logger.info(f"Function type: {type(function)}")
                     logger.info(f"Metadata: {metadata}")
                     
                     # Register the tool
+                    logger.info(f"Attempting to register tool {tool_name}...")
                     success = mcp_registry.register_tool(tool_name, function, metadata, script_content)
                     if success:
                         chunks.append(f"   ✅ Registered: {tool_name}")
                         logger.info(f"Tool {tool_name} registered successfully")
+                        logger.info(f"Total tools in registry: {len(mcp_registry.tools)}")
                     else:
                         chunks.append(f"   ❌ Registration failed: {tool_name}")
                         logger.error(f"Tool {tool_name} registration failed")
@@ -465,6 +467,8 @@ def mcp_agent_node(state: State) -> Command[Literal["evaluator"]]:
                     chunks.append(f"   ❌ Creation failed: {tool_name}")
                     logger.error(f"Function {tool_name} creation failed")
                     logger.error(f"Script that failed:\n{script_content}")
+                    logger.error(f"Function returned: {function}")
+                    logger.error(f"Metadata returned: {metadata}")
         
         # Step 4: Execute tools according to strategy
         execution_results = []
@@ -483,19 +487,19 @@ def mcp_agent_node(state: State) -> Command[Literal["evaluator"]]:
                     # Extract arguments for this tool based on the query
                     tool_args = extract_tool_arguments(req, query, llm_provider)
                     
-                    # Execute the tool - most generated tools are self-contained
+                    # Execute the tool - pass the query as the first argument
                     if tool_args:
-                        # Only pass arguments if the tool explicitly needs them
-                        result = mcp_registry.execute_tool(tool_name, *tool_args)
+                        # Pass query as first argument, then any extracted args
+                        result = mcp_registry.execute_tool(tool_name, query, *tool_args)
                         execution_results.append(f"✅ {tool_name}: {str(result)[:100]}...")
                         chunks.append(f"   → Success: {str(result)[:50]}...")
-                        logger.info(f"Tool {tool_name} executed with args {tool_args}: {result}")
+                        logger.info(f"Tool {tool_name} executed with query and args {tool_args}: {result}")
                     else:
-                        # Most tools are self-contained and don't need arguments
-                        result = mcp_registry.execute_tool(tool_name)
+                        # Pass query as the only argument
+                        result = mcp_registry.execute_tool(tool_name, query)
                         execution_results.append(f"✅ {tool_name}: {str(result)[:100]}...")
                         chunks.append(f"   → Success: {str(result)[:50]}...")
-                        logger.info(f"Tool {tool_name} executed without args: {result}")
+                        logger.info(f"Tool {tool_name} executed with query: {result}")
                         
                 except Exception as e:
                     execution_results.append(f"❌ {tool_name}: {str(e)}")
@@ -503,6 +507,10 @@ def mcp_agent_node(state: State) -> Command[Literal["evaluator"]]:
                     logger.error(f"Tool {tool_name} execution failed: {e}")
         
         chunks.append(f"📊 **Registry status:** {len(mcp_registry.tools)} total tools available")
+        
+        # Debug: Check registry status
+        logger.info("=== DEBUG: Checking registry status ===")
+        mcp_registry.check_registry_status()
         
         return Command(
             update={
@@ -676,16 +684,34 @@ def synthesizer_node(state: State):
     web_results_summary = json.dumps(web_results[:3], indent=2) if web_results else "No web results"
     mcp_results_summary = chr(10).join(mcp_results) if mcp_results else "No tool results"
     
-    # Simple prompt - Claude will naturally handle images if they're in the context
-    prompt = SYNTHESIS_PROMPT.format(
-        query=query,
-        web_results_summary=web_results_summary,
-        mcp_results_summary=mcp_results_summary
-    )
-    
-    # Add image context if images exist
+    # Create a more specific prompt when images are present
     if image_files:
-        prompt += f"\n\nIMAGES AVAILABLE: {', '.join([os.path.basename(f) for f in image_files])} in gaia_files directory. Please analyze these images to answer the query."
+        # For image-based tasks, emphasize the specific question requirements
+        prompt = f"""IMPORTANT: You have an image to analyze. Please focus on answering this specific question:
+
+QUESTION: {query}
+
+CRITICAL REQUIREMENTS:
+- Analyze the provided image carefully
+- Answer the question exactly as asked
+- Pay attention to specific formatting requirements (e.g., comma-separated lists, no whitespace)
+- Follow any ordering requirements mentioned in the question
+- Provide the exact format requested
+
+Web Search Results:
+{web_results_summary}
+
+Tool Results:
+{mcp_results_summary}
+
+Please analyze the image and provide your answer in the exact format requested by the question."""
+    else:
+        # Use the standard prompt for non-image tasks
+        prompt = SYNTHESIS_PROMPT.format(
+            query=query,
+            web_results_summary=web_results_summary,
+            mcp_results_summary=mcp_results_summary
+        )
     
     try:
         # Generate final answer with vision support

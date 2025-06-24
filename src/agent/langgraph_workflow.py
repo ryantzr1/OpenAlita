@@ -57,23 +57,46 @@ class LangGraphCoordinator:
         self.workflow = _build_workflow()
         logger.info("LangGraph Coordinator initialized")
     
-    def process_query_streaming(self, query: str) -> Generator[str, None, None]:
+    def process_query_streaming(self, query: str, specific_image_file: str = None) -> Generator[str, None, None]:
         """Process a query through the LangGraph workflow with streaming output"""
+        import os  # Ensure os is always available
         
-        # Detect image files for the entire workflow
-        import os
-        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        gaia_files_dir = os.path.join(project_root, "gaia_files")
+        # Handle image files - only include when specifically relevant
         image_files = []
-        if os.path.exists(gaia_files_dir):
-            image_files = [os.path.join(gaia_files_dir, f) for f in os.listdir(gaia_files_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff'))]
+        if specific_image_file:
+            # Use the specific image file provided (e.g., from GAIA question)
+            if os.path.exists(specific_image_file):
+                image_files = [specific_image_file]
+                logger.info(f"Using specific image file: {specific_image_file}")
+            else:
+                logger.warning(f"Specific image file not found: {specific_image_file}")
+        else:
+            # For non-GAIA queries, only include images if the query explicitly mentions them
+            # or if there's a clear visual component to the question
+            query_lower = query.lower()
+            visual_keywords = ['image', 'picture', 'photo', 'screenshot', 'visual', 'chart', 'graph', 'diagram', 'map']
+            has_visual_component = any(keyword in query_lower for keyword in visual_keywords)
+            
+            if has_visual_component:
+                # Only then check for image files in the directory
+                project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                gaia_files_dir = os.path.join(project_root, "gaia_files")
+                if os.path.exists(gaia_files_dir):
+                    available_images = [os.path.join(gaia_files_dir, f) for f in os.listdir(gaia_files_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff'))]
+                    if available_images:
+                        # For now, use the first available image if query mentions visual content
+                        # In a more sophisticated implementation, you could use LLM to determine which image is most relevant
+                        image_files = [available_images[0]]
+                        logger.info(f"Query mentions visual content, using image: {os.path.basename(available_images[0])}")
+            else:
+                logger.info("Query does not mention visual content, proceeding without images")
         
         # Initialize state
         initial_state = {
             "original_query": query,
             "messages": [],
             "streaming_chunks": [],
-            "image_files": image_files  # Include image files in initial state
+            "image_files": image_files  # Include image files in initial state (empty if not relevant)
         }
         
         # Create unique thread ID

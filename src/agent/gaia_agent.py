@@ -293,27 +293,49 @@ Please analyze the file content and answer the question based on the information
         yield f"Level: {question.level}\n"
         
         # Handle file attachment
+        specific_image_file = None
+        enhanced_question = question.question  # Default to original question
+        
         if question.file_name:
             yield f"File: {question.file_name}\n"
-            file_content = self._load_file_content(question.file_name)
-            if file_content:
-                yield f"📁 File loaded successfully ({len(file_content)} characters)\n"
-                # Create enhanced prompt with file content
-                enhanced_question = self._create_file_context_prompt(question.question, file_content)
+            
+            # Check if it's an image file
+            if question.file_name.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff')):
+                # For image files, get the full path to pass to LangGraph
+                image_path = os.path.join(self.gaia_files_dir, question.file_name)
+                if os.path.exists(image_path):
+                    specific_image_file = image_path
+                    yield f"📁 Image file found: {question.file_name}\n"
+                else:
+                    yield f"⚠️ Warning: Image file not found: {image_path}\n"
+                    specific_image_file = None
             else:
-                yield f"⚠️ Warning: Could not load file {question.file_name}\n"
-                enhanced_question = question.question
-        else:
-            enhanced_question = question.question
+                # For non-image files, load content as before
+                file_content = self._load_file_content(question.file_name)
+                if file_content:
+                    yield f"📁 File loaded successfully ({len(file_content)} characters)\n"
+                    # Create enhanced prompt with file content
+                    enhanced_question = self._create_file_context_prompt(question.question, file_content)
+                else:
+                    yield f"⚠️ Warning: Could not load file {question.file_name}\n"
+                    enhanced_question = question.question
         
         yield "\nLet me think through this step by step:\n\n"
         
         try:
             # Use LangGraph workflow for comprehensive analysis
+            # Pass the specific image file if available
             full_response = ""
-            for chunk in self.langgraph_coordinator.process_query_streaming(enhanced_question):
-                full_response += chunk
-                yield chunk
+            if specific_image_file:
+                # Pass the specific image file to LangGraph
+                for chunk in self.langgraph_coordinator.process_query_streaming(enhanced_question, specific_image_file):
+                    full_response += chunk
+                    yield chunk
+            else:
+                # No specific image, use normal processing
+                for chunk in self.langgraph_coordinator.process_query_streaming(enhanced_question):
+                    full_response += chunk
+                    yield chunk
             
             # Extract final answer using LLM with GAIA format
             final_answer = self._extract_gaia_final_answer(question.question, full_response)
