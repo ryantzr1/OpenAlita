@@ -13,10 +13,16 @@ import json
 import logging
 import time
 import os
+import sys
 import pandas as pd
 from typing import Dict, Any, List, Generator, Optional
 from dataclasses import dataclass
 import uuid
+
+# Add project root to sys.path for imports
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
 from .llm_provider import LLMProvider
 from .web_agent import WebAgent
@@ -75,8 +81,18 @@ class GAIAAgent:
                 return self._process_text_file(file_path)
             elif file_name.lower().endswith('.pdb'):
                 return self._process_pdb_file(file_path)
+            elif file_name.lower().endswith('.pdf'):
+                return self._process_pdf_file(file_path)
             elif file_name.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff')):
                 return self._process_image_file(file_path)
+            elif file_name.lower().endswith(('.mp3', '.wav', '.m4a', '.flac', '.ogg', '.aac')):
+                # Transcribe audio using OpenAI Whisper API
+                from src.utils import transcribe_audio_openai
+                transcript = transcribe_audio_openai(file_path)
+                if transcript:
+                    return f"[AUDIO TRANSCRIPT]\n{transcript}"
+                else:
+                    return None
             else:
                 logger.warning(f"Unsupported file type: {file_name}")
                 return None
@@ -281,7 +297,9 @@ Question: {question}
 File Content:
 {file_content}
 
-Please analyze the file content and answer the question based on the information provided in the file."""
+IMPORTANT: When extracting information from the file content, please preserve the exact names, descriptions, and terminology as they appear in the source. Do not simplify or abbreviate terms unless specifically requested. Pay attention to descriptive adjectives and qualifiers.
+
+Please analyze the file content and answer the question based on the information provided in the file, maintaining the exact terminology used."""
     
     def process_gaia_question(self, question: GAIAQuestion) -> Generator[str, None, None]:
         """Process a GAIA question with streaming output"""
