@@ -10,9 +10,9 @@ class LLMProvider:
     
     def __init__(self, api_key=None, api_url=None):
         load_dotenv()
-        # Use DeepWisdom API endpoint with Claude
-        self.deepwisdom_api_key = api_key if api_key else os.getenv("DEEPWISDOM_API_KEY")
-        self.api_url = api_url if api_url else "https://oneapi.deepwisdom.ai/v1"
+        # Default to use DeepWisdom API endpoint with Claude
+        self.llm_api_key = api_key if api_key else os.getenv("LLM_API_KEY")
+        self.api_url = api_url if api_url else os.getenv("LLM_API_BASE", "https://oneapi.deepwisdom.ai/v1")
 
         # Default to Claude 3.5 Sonnet; can be changed via env var
         self.model_name = os.getenv("LLM_MODEL_NAME", "claude-3-5-sonnet-20241022")
@@ -222,7 +222,7 @@ IMPORTANT:
         """Make direct API call to DeepWisdom Claude endpoint with streaming, supporting both text and vision."""
         
         headers = {
-            "Authorization": f"Bearer {self.deepwisdom_api_key}",
+            "Authorization": f"Bearer {self.llm_api_key}",
             "Content-Type": "application/json",
             "Accept": "text/event-stream"
         }
