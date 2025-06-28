@@ -202,7 +202,8 @@ Create a `.env` file with the following variables:
 
 ```bash
 # Required for all functionality
-DEEPWISDOM_API_KEY=your_deepwisdom_api_key
+LLM_MODEL_NAME="your_model_name"
+LLM_API_KEY=your_llm_api_key
 
 # Required for browser automation
 ANTHROPIC_API_KEY=your_anthropic_api_key
