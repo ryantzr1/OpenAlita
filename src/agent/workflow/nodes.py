@@ -555,14 +555,20 @@ def evaluator_node(state: State) -> Command[Literal["coordinator", "synthesizer"
     
     # If browser automation was successful, we have enough information
     if browser_success:
+        # Calculate confidence based on browser results quality
+        browser_confidence = 0.85  # Base confidence for successful browser automation
+        if image_files:
+            browser_confidence += 0.05  # Slight boost for vision tasks
+        
         chunks = [f"📊 **Evaluator:** Browser automation completed successfully!\n"]
         chunks.append(f"📈 **Completeness:** 95.0%\n")
+        chunks.append(f"🎯 **Confidence:** {browser_confidence:.1%}\n")
         chunks.append("✅ **Decision:** Browser automation provided the required information\n")
         
         return Command(
             update={
                 "answer_completeness": 0.95,
-                "confidence_score": 0.95,
+                "confidence_score": min(browser_confidence, 1.0),
                 "mcp_execution_results": mcp_results
             },
             goto="synthesizer"
@@ -634,11 +640,19 @@ def evaluator_node(state: State) -> Command[Literal["coordinator", "synthesizer"
                 chunks.append(f"🔍 **Missing:** {', '.join(missing[:3])}\n")
             chunks.append("🔄 **Decision:** Need more information\n")
         
+        base_confidence = completeness * 0.8
+        if image_files:
+            base_confidence += 0.1
+        if len(web_results) > 0:
+            base_confidence += 0.05
+        if len(mcp_results) > 0:
+            base_confidence += 0.05
+        
         # Only update streaming_chunks if going to synthesizer (final decision)
         # If going to coordinator, let the next node handle streaming_chunks
         update_dict = {
             "answer_completeness": completeness,
-            "confidence_score": completeness
+            "confidence_score": min(base_confidence, 1.0)
         }
         
         if goto == "synthesizer":
@@ -651,12 +665,13 @@ def evaluator_node(state: State) -> Command[Literal["coordinator", "synthesizer"
         
     except Exception as e:
         logger.error(f"Evaluator error: {e}")
-        # Fallback to synthesizer if something goes wrong
+        error_confidence = 0.3
+        
         return Command(
             update={
                 "streaming_chunks": [f"📊 **Evaluator Error:** {str(e)}\n→ Proceeding to synthesis\n"],
                 "answer_completeness": 0.5,
-                "confidence_score": 0.5
+                "confidence_score": min(error_confidence, 1.0)
             },
             goto="synthesizer"
         )
@@ -722,17 +737,31 @@ Please analyze the image and provide your answer in the exact format requested b
         
         final_answer = "".join(response_chunks)
         
+        # Calculate final confidence based on available information and answer quality
+        base_confidence = 0.7  # Base confidence for successful synthesis
+        if image_files:
+            base_confidence += 0.15  # Significant boost for vision tasks
+        if len(web_results) > 0:
+            base_confidence += 0.1  # Boost for having web search results
+        if len(mcp_results) > 0:
+            base_confidence += 0.05  # Small boost for having tool results
+        
+        # Cap at reasonable maximum
+        final_confidence = min(base_confidence, 0.95)  # Never claim 100% confidence
+        
         return {
             "final_answer": final_answer,
-            "confidence_score": 0.9 if image_files else 0.8,
+            "confidence_score": final_confidence,
             "streaming_chunks": chunks
         }
         
     except Exception as e:
         logger.error(f"Synthesis error: {e}")
+        error_confidence = 0.1
+        
         return {
             "final_answer": f"Error generating response: {str(e)}",
-            "confidence_score": 0.3,
+            "confidence_score": error_confidence,
             "streaming_chunks": [f"❌ **Synthesis error:** {str(e)}\n"]
         }
 
