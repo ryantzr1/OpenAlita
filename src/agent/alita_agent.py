@@ -211,7 +211,7 @@ The system will automatically decide whether to use web search, create custom to
             
             # Create MCP function from the generated script
             logger.info("Creating MCP function from generated script")
-            mcp_function, mcp_metadata = self.mcp_factory.create_mcp_from_script(mcp_name, final_script)
+            mcp_function, mcp_metadata, cleaned_script = self.mcp_factory.create_mcp_from_script(mcp_name, final_script)
             
             if not mcp_function:
                 logger.error("Failed to create MCP function from script")
@@ -233,7 +233,7 @@ The system will automatically decide whether to use web search, create custom to
                 "returns_info": mcp_metadata.get('returns', 'N/A'),
                 "source": "dynamically-generated",
                 "requires": mcp_metadata.get('requires'),
-                "script_content": final_script,
+                "script_content": cleaned_script or final_script,
                 "original_command": command_str
             }
             

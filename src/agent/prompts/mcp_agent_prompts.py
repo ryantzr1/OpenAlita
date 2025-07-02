@@ -56,7 +56,7 @@ Create a focused, single-purpose function:
 # Description: {description}
 # Arguments: query (string) - the user query to process
 # Returns: processed result
-# Requires: re, json, math (or other built-in modules only)
+# Requires: re, json, math
 
 def {tool_name}(query=""):
     try:
