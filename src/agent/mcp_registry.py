@@ -192,7 +192,11 @@ class MCPRegistry:
 
         try:
             with open(self.registry_file, 'r') as f:
-                data = json.load(f)
+                content = f.read().strip()
+                if not content:
+                    logger.info("Registry file is empty, starting fresh")
+                    return
+                data = json.loads(content)
 
             logger.info(f"Loaded {len(data)} tool metadata entries from registry")
 
@@ -206,7 +210,7 @@ class MCPRegistry:
                 metadata = tool_data.get('metadata', {})
 
                 if name and script_content:
-                    function, _ = mcp_factory.create_mcp_from_script(name, script_content)
+                    function, _, _ = mcp_factory.create_mcp_from_script(name, script_content)
                     if function:
                         tool = MCPTool(
                             name=name,
@@ -227,6 +231,10 @@ class MCPRegistry:
 
             logger.info(f"Successfully loaded {len(self.tools)} tools from registry file")
 
+        except json.JSONDecodeError as e:
+            logger.warning(f"Registry file contains invalid JSON, starting fresh: {e}")
+            # Don't crash, just start with empty registry
+            return
         except Exception as e:
             logger.error(f"Failed to load registry: {e}", exc_info=True)
     
