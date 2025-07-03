@@ -591,16 +591,32 @@ def evaluator_node(state: State) -> Command[Literal["coordinator", "synthesizer"
     
     # Check if browser automation was successful
     logger.info(f"Evaluator checking browser results: {mcp_results}")
-    browser_success = mcp_results
-    browser_failed = any("browser automation failed" in str(result) for result in mcp_results)
     
+    # Check for browser automation results
+    browser_results = [result for result in mcp_results if "browser" in str(result).lower() or "final result:" in str(result).lower()]
+    
+    # More comprehensive failure detection
+    browser_failed = any(
+        "browser automation failed" in str(result).lower() or
+        "failed:" in str(result).lower() or
+        "error:" in str(result).lower() or
+        "incomplete" in str(result).lower() or
+        "did not" in str(result).lower() or
+        "could not" in str(result).lower() or
+        "unable" in str(result).lower()
+        for result in mcp_results
+    )
+    
+    # Success means we have results AND no failure indicators
+    browser_success = bool(mcp_results) and not browser_failed
+    
+    logger.info(f"Browser results found: {len(browser_results)}")
     logger.info(f"Browser success detected: {browser_success}")
     logger.info(f"Browser failed detected: {browser_failed}")
     
     # If browser automation was successful, we have enough information
-    if browser_success:
-        # Calculate confidence based on browser results quality
-        browser_confidence = 0.85  # Base confidence for successful browser automation
+    if browser_success and not browser_failed:
+        browser_confidence = 0.85 
         if image_files:
             browser_confidence += 0.05  # Slight boost for vision tasks
         
@@ -665,10 +681,28 @@ def evaluator_node(state: State) -> Command[Literal["coordinator", "synthesizer"
             }
         
         completeness = evaluation.get("completeness_score", 0.5)
-        should_synthesize = evaluation.get("has_sufficient_info", False) or iteration >= max_iter
+        
+        # If browser was attempted but failed, reduce confidence and consider continuing
+        if browser_results and browser_failed:
+            logger.warning("Browser automation was attempted but failed - reducing confidence")
+            completeness = min(completeness, 0.4)  # Significantly reduce confidence
+            reasoning = f"Browser automation failed: {reasoning}"
+            # Don't synthesize if browser failed unless we have max iterations
+            should_synthesize = iteration >= max_iter
+        else:
+            should_synthesize = evaluation.get("has_sufficient_info", False) or iteration >= max_iter
+        
         reasoning = evaluation.get("reasoning", "No reasoning provided")
         
-        chunks = [f"📊 **Evaluator:** {reasoning}\n"]
+        # Add debug info about browser status
+        if browser_results:
+            if browser_failed:
+                chunks = [f"📊 **Evaluator:** Browser automation failed - {reasoning}\n"]
+                chunks.append(f"⚠️ **Browser Status:** Failed - reducing confidence\n")
+            else:
+                chunks = [f"📊 **Evaluator:** {reasoning}\n"]
+        else:
+            chunks = [f"📊 **Evaluator:** {reasoning}\n"]
         if image_files:
             chunks.append(f"🖼️ **Vision context:** {len(image_files)} images considered\n")
         chunks.append(f"📈 **Completeness:** {completeness:.1%}\n")
