@@ -278,23 +278,6 @@ class MCPRegistry:
                 metadata = tool_data.get('metadata', {})
                 file_path = tool_data.get('file_path')
 
-<<<<<<< Updated upstream
-                if name and script_content:
-                    function, _ = mcp_factory.create_mcp_from_script(name, script_content)
-                    if function:
-                        tool = MCPTool(
-                            name=name,
-                            description=tool_data.get('description', ''),
-                            function=function,
-                            metadata=metadata,
-                            script_content=script_content,
-                            created_at=datetime.fromisoformat(tool_data.get('created_at', datetime.now().isoformat())),
-                            usage_count=tool_data.get('usage_count', 0),
-                            last_used=datetime.fromisoformat(tool_data.get('last_used')) if tool_data.get('last_used') else None
-                        )
-                        self.tools[name] = tool
-                        logger.info(f"Loaded and recreated tool: {name}")
-=======
                 if name:
                     # Try to load from file first, fallback to script_content
                     if file_path and os.path.exists(file_path):
@@ -306,7 +289,6 @@ class MCPRegistry:
                             logger.warning(f"Failed to load tool '{name}' from file, using registry content")
                     elif script_content:
                         logger.info(f"Loading tool '{name}' from registry content")
->>>>>>> Stashed changes
                     else:
                         logger.warning(f"No script content available for tool: {name}")
                         continue
