@@ -11,6 +11,8 @@ import os
 from typing import Dict, Any, List, Literal
 from langgraph.types import Command
 from dotenv import load_dotenv
+from browser_use.llm.openai.chat import ChatOpenAI
+from browser_use import Agent
 
 from .state import State
 
@@ -83,8 +85,6 @@ def browser_agent_node(state: State) -> Command[Literal["evaluator", "web_agent"
         """
         
         try:
-            from langchain_openai import ChatOpenAI
-            from browser_use.agent.memory import MemoryConfig
 
             # Completely disable browser-use cloud features via environment
             os.environ["BROWSER_USE_DISABLE_CLOUD"] = "true"
@@ -93,30 +93,36 @@ def browser_agent_node(state: State) -> Command[Literal["evaluator", "web_agent"
             # Use GPT-4 with optimized settings for browser automation
             chat_model = ChatOpenAI(
                 model="gpt-4o",
-                openai_api_key=openai_api_key,
+                api_key=openai_api_key,
                 temperature=0,  # Low temperature for consistent actions
-                max_tokens=4000,  # More tokens for complex reasoning
             )
             
-            planner_llm = ChatOpenAI(model='gpt-4o', openai_api_key=openai_api_key)
+            planner_llm = ChatOpenAI(model='gpt-4o-mini', api_key=openai_api_key)
             
             chunks.append("🤖 **Using GPT-4**\n")
+
+            extend_system_message = """
+
+            SKIP YOUTUBE ADS INSTRUCTIONS:
+            - To skip a Youtube ad, click the Skip button
+            - The Skip button is the button that says "Skip" and is usually located at the bottom of the video player
+            - You can also click the Skip button to skip the ad
+            """
+            
+            extend_planner_system_message = """
+            PRIORITIZE gathering information before taking any action.
+            If you have been stuck on the same page for too long, try a different approach.
+            """
             
             # Create browser-use agent with minimal configuration
             agent = Agent(
                 task=task_description,
                 llm=chat_model,
                 use_vision=True,
-                save_conversation_path=None,
-                cloud_sync=False,  # Explicitly disable cloud sync
                 is_planner_reasoning=True,
                 planner_llm=planner_llm,
-                planner_interval=4,
-                memory_config=MemoryConfig(
-                    llm_instance=chat_model,  
-                    agent_id="my_custom_agent",
-                    memory_interval=15
-                )
+                extend_system_message=extend_system_message,
+                extend_planner_system_message=extend_planner_system_message
             )
             
             chunks.append("✅ **Browser agent configured**\n")
