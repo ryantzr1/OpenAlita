@@ -26,8 +26,9 @@ class State(MessagesState):
     
     # Evaluation and synthesis
     answer_completeness: float = 0.0
+    evaluator_confidence: float = 0.0  # Confidence from evaluator node
     final_answer: str = ""
-    confidence_score: float = 0.0
+    confidence_score: float = 0.0  # Final confidence from synthesizer only
     
     # Streaming - properly annotated for multiple values
     streaming_chunks: Annotated[List[str], add] = [] 
