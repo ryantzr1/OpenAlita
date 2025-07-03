@@ -8,6 +8,7 @@ import json
 import logging
 import time
 import os
+import re
 from typing import Dict, Any, List, Literal, Annotated
 from langgraph.types import Command
 from dotenv import load_dotenv
@@ -31,6 +32,49 @@ from ..prompts import (
 from .state import State
 
 logger = logging.getLogger('alita.langgraph')
+
+
+def summarize_mcp_results(mcp_results: List[str], max_items: int = 3, max_length_per_item: int = 200) -> str:
+    """
+    Summarize and filter MCP execution results to prevent token overflow.
+    
+    Args:
+        mcp_results: List of result strings
+        max_items: Maximum number of items to include
+        max_length_per_item: Maximum length per item
+    
+    Returns:
+        Summarized results string
+    """
+    if not mcp_results:
+        return "No tool execution results"
+    
+    # Filter and truncate results
+    filtered_results = []
+    total_length = 0
+    max_total_length = 1000  # Overall limit
+    
+    for i, result in enumerate(mcp_results):
+        if i >= max_items:
+            break
+            
+        # Truncate individual results
+        if len(result) > max_length_per_item:
+            result = result[:max_length_per_item-3] + "..."
+        
+        # Check total length
+        if total_length + len(result) > max_total_length:
+            remaining_items = len(mcp_results) - i
+            filtered_results.append(f"... and {remaining_items} more results (truncated)")
+            break
+            
+        filtered_results.append(result)
+        total_length += len(result)
+    
+    if not filtered_results:
+        return "Tool execution completed (results too large to display)"
+    
+    return "\n".join(filtered_results)
 
 
 def coordinator_node(state: State) -> Command[Literal["web_agent", "mcp_agent", "synthesizer", "browser_agent"]]:
@@ -89,7 +133,7 @@ SEARCH RESULTS SUMMARY:
     has_image_files = "Yes" if image_files else "No"
     image_files_info = f"Image files: {', '.join([os.path.basename(f) for f in image_files])}" if image_files else "No image files detected"
     web_results_summary = json.dumps(web_results[:2], indent=2) if web_results else "No web results yet"
-    mcp_results_summary = chr(10).join(mcp_results[:2]) if mcp_results else "No tool results yet"
+    mcp_results_summary = summarize_mcp_results(mcp_results[:2]) if mcp_results else "No tool results yet"
     
     analysis_prompt = COORDINATOR_ANALYSIS_PROMPT.format(
         query=query,
@@ -568,7 +612,7 @@ def evaluator_node(state: State) -> Command[Literal["coordinator", "synthesizer"
         return Command(
             update={
                 "answer_completeness": 0.95,
-                "confidence_score": min(browser_confidence, 1.0),
+                "evaluator_confidence": min(browser_confidence, 1.0),
                 "mcp_execution_results": mcp_results
             },
             goto="synthesizer"
@@ -576,14 +620,14 @@ def evaluator_node(state: State) -> Command[Literal["coordinator", "synthesizer"
     
     # Create evaluation prompt for LLM
     web_results_summary = json.dumps(web_results[:3], indent=2) if web_results else "No web search results"
-    mcp_results_summary = chr(10).join(mcp_results[:3]) if mcp_results else "No tool execution results"
+    mcp_results_summary = summarize_mcp_results(mcp_results[:3]) if mcp_results else "No tool execution results"
     
     evaluation_prompt = EVALUATOR_ANALYSIS_PROMPT.format(
         query=query,
         web_results_count=len(web_results),
         web_results_summary=web_results_summary,
         mcp_results_summary=mcp_results_summary,
-        mcp_execution_results=mcp_results,
+        mcp_execution_results=summarize_mcp_results(mcp_results, max_items=2, max_length_per_item=150),
         iteration=iteration,
         max_iter=max_iter
     )
@@ -652,7 +696,7 @@ def evaluator_node(state: State) -> Command[Literal["coordinator", "synthesizer"
         # If going to coordinator, let the next node handle streaming_chunks
         update_dict = {
             "answer_completeness": completeness,
-            "confidence_score": min(base_confidence, 1.0)
+            "evaluator_confidence": min(base_confidence, 1.0)
         }
         
         if goto == "synthesizer":
@@ -671,7 +715,7 @@ def evaluator_node(state: State) -> Command[Literal["coordinator", "synthesizer"
             update={
                 "streaming_chunks": [f"📊 **Evaluator Error:** {str(e)}\n→ Proceeding to synthesis\n"],
                 "answer_completeness": 0.5,
-                "confidence_score": min(error_confidence, 1.0)
+                "evaluator_confidence": min(error_confidence, 1.0)
             },
             goto="synthesizer"
         )
@@ -691,7 +735,7 @@ def synthesizer_node(state: State):
     
     # Create synthesis prompt
     web_results_summary = json.dumps(web_results[:3], indent=2) if web_results else "No web results"
-    mcp_results_summary = chr(10).join(mcp_results) if mcp_results else "No tool results"
+    mcp_results_summary = summarize_mcp_results(mcp_results) if mcp_results else "No tool results"
     
     # Create a more specific prompt when images are present
     if image_files:
@@ -737,8 +781,11 @@ Please analyze the image and provide your answer in the exact format requested b
         
         final_answer = "".join(response_chunks)
         
+        # Get evaluator confidence as base
+        evaluator_confidence = state.get("evaluator_confidence", 0.5)
+        
         # Calculate final confidence based on available information and answer quality
-        base_confidence = 0.7  # Base confidence for successful synthesis
+        base_confidence = evaluator_confidence * 0.8  # Start with evaluator's assessment
         if image_files:
             base_confidence += 0.15  # Significant boost for vision tasks
         if len(web_results) > 0:
@@ -766,20 +813,36 @@ Please analyze the image and provide your answer in the exact format requested b
         }
 
 
-def extract_tool_arguments(tool_metadata, user_query, llm_provider):
-    """
-    Use the LLM to extract arguments for a tool from the user query.
-    """
-    prompt = f"""
-    Tool: {tool_metadata['name']}
-    Description: {tool_metadata['description']}
-    Expected arguments: {tool_metadata.get('args', 'None')}
-    User query: {user_query}
-    
-    Extract the arguments from the user query and return them as a Python list in the correct order.
-    """
-    response = llm_provider.simple_completion(prompt)
+def extract_tool_arguments(tool_req: Dict[str, Any], query: str, llm_provider: LLMProvider) -> List[str]:
+    """Extract tool arguments from query using LLM"""
     try:
-        return eval(response)  # Or use ast.literal_eval for safety
-    except Exception:
+        # Simple argument extraction - can be enhanced later
+        args_prompt = f"""
+        Extract arguments for tool '{tool_req['name']}' from this query: "{query}"
+        
+        Tool purpose: {tool_req['purpose']}
+        
+        Return only the arguments as a JSON array, or empty array if no specific arguments found.
+        Example: ["arg1", "arg2"] or []
+        """
+        
+        response = ""
+        for chunk in llm_provider._make_api_call(args_prompt):
+            response += chunk
+        
+        # Try to parse JSON response
+        try:
+            json_start = response.find('[')
+            json_end = response.rfind(']') + 1
+            if json_start >= 0 and json_end > json_start:
+                json_str = response[json_start:json_end]
+                args = json.loads(json_str)
+                return args if isinstance(args, list) else []
+        except (json.JSONDecodeError, ValueError):
+            pass
+        
+        return []
+        
+    except Exception as e:
+        logger.warning(f"Error extracting tool arguments: {e}")
         return []
