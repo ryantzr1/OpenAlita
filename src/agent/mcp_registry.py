@@ -9,6 +9,7 @@ from typing import Dict, Any, List, Optional, Callable
 from dataclasses import dataclass, asdict
 from datetime import datetime
 import inspect
+import re
 
 logger = logging.getLogger('alita.mcp_registry')
 

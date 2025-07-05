@@ -139,10 +139,10 @@ class MCPFactory:
                 logger.error(f"Failed to install package for module: {module_name}")
                 return None
 
-    def create_mcp_from_script(self, function_name: str, script_content: str) -> Tuple[Optional[Callable], Dict[str, Any], Optional[str]]:
+    def create_mcp_from_script(self, function_name: str, script_content: str) -> Tuple[Optional[Callable], Dict[str, Any]]:
         """
         Create an MCP function from a script string.
-        Returns (function, metadata, cleaned_script) or (None, {}, None) if creation fails.
+        Returns (function, metadata) or (None, {}) if creation fails.
         """
         try:
             logger.info(f"Creating MCP from script for function '{function_name}'")
@@ -155,14 +155,13 @@ class MCPFactory:
             cleaned_script = self._clean_script(script_content)
             if not cleaned_script:
                 logger.error("Script cleaning failed - returned empty script")
-                return None, {}, None
+                return None, {}
             
             # Create a safe execution environment
             safe_globals = self._create_safe_globals(metadata.get('requires', ''))
             
             # Execute the script to define the function
             logger.debug("Executing script to define function")
-            final_script_to_save = cleaned_script  # Track what script we actually use
             try:
                 exec(cleaned_script, safe_globals)
             except SyntaxError as e:
@@ -173,16 +172,15 @@ class MCPFactory:
                 # Try one more time with a simpler fallback
                 logger.warning("Attempting to create minimal fallback function")
                 fallback_script = f"""
-def {function_name}(query=""):
-    return f"Function '{function_name}' created as fallback due to syntax errors"
-"""
+                def {function_name}(query=""):
+                    return f"Function '{function_name}' created as fallback due to syntax errors"
+                """
                 try:
                     exec(fallback_script, safe_globals)
                     logger.info("Fallback function created successfully")
-                    final_script_to_save = fallback_script  # Use fallback script for saving
                 except Exception as fallback_error:
                     logger.error(f"Even fallback function failed: {fallback_error}")
-                    return None, {}, None
+                    return None, {}
                     
             except Exception as e:
                 logger.error(f"Error executing script: {e}", exc_info=True)
@@ -197,10 +195,9 @@ def {function_name}(query=""):
                 try:
                     exec(fallback_script, safe_globals)
                     logger.info("Fallback function created successfully")
-                    final_script_to_save = fallback_script  # Use fallback script for saving
                 except Exception as fallback_error:
                     logger.error(f"Even fallback function failed: {fallback_error}")
-                    return None, {}, None
+                    return None, {}
             
             # Extract the function
             actual_function_name = metadata.get('name', function_name)
@@ -218,16 +215,16 @@ def {function_name}(query=""):
                 except Exception as sig_error:
                     logger.warning(f"Could not inspect function signature: {sig_error}")
                 
-                return function, metadata, final_script_to_save
+                return function, metadata
             else:
                 all_vars = [k for k in safe_globals.keys() if not k.startswith('__')]
                 logger.error(f"Function '{actual_function_name}' not found in executed script")
                 logger.error(f"Available variables: {all_vars}")
-                return None, {}, None
+                return None, {}
                 
         except Exception as e:
             logger.error(f"Error creating MCP from script: {e}", exc_info=True)
-            return None, {}, None
+            return None, {}
     
     def _add_return_check_wrapper(self, script: str, function_name: str) -> str:
         """Add wrapper to function to check for proper return values and debug execution"""
@@ -360,7 +357,7 @@ def {function_name}(*args, **kwargs):
         return metadata
     
     def _clean_script(self, script_content: str) -> Optional[str]:
-        """Enhanced script cleaning - remove markdown blocks and example usage code."""
+        """Minimal script cleaning - only remove markdown blocks and fix basic syntax for exec to work."""
         try:
             logger.debug(f"Raw script content received:\n{script_content[:500]}...")
             
@@ -373,10 +370,13 @@ def {function_name}(*args, **kwargs):
             metadata = self._parse_script_metadata(script_content)
             function_name = metadata.get('name', 'unknown_function')
             
-            # Step 1: Remove markdown blocks
+            # Only remove markdown blocks - keep everything else including comments.
             cleaned_script = self._remove_markdown_blocks_only(script_content)
             
-            # Step 2: Remove example usage code that appears after function definitions
+            # Ensure flexible signature for all tool functions
+            cleaned_script = self._ensure_flexible_signature(cleaned_script, function_name)
+            
+            # Remove example usage code that appears after function definitions
             cleaned_script = self._remove_example_usage_code(cleaned_script, function_name)
             
             # Do minimal syntax fixes only if needed
@@ -411,7 +411,7 @@ def {function_name}(*args, **kwargs):
                     return None
                 
         except Exception as e:
-            logger.error(f"Error in enhanced script cleaning: {e}", exc_info=True)
+            logger.error(f"Error in minimal script cleaning: {e}", exc_info=True)
             return None
 
     def _remove_markdown_blocks_only(self, script: str) -> str:
@@ -434,6 +434,33 @@ def {function_name}(*args, **kwargs):
                 cleaned_lines.append(line)
         
         return '\n'.join(cleaned_lines)
+
+    def _ensure_flexible_signature(self, script: str, function_name: str) -> str:
+        """
+        Ensures the function signature includes *args, **kwargs to prevent argument mismatch errors.
+        This makes all tool functions robust to extra arguments being passed by the agent.
+        """
+        import re
+        
+        # Pattern to match function definition
+        pattern = rf"def {function_name}\s*\(([^)]*)\):"
+        
+        # Check if the function already has *args, **kwargs
+        if "*args" in script and "**kwargs" in script:
+            logger.debug(f"Function '{function_name}' already has flexible signature")
+            return script
+        
+        # Replace the function signature to include *args, **kwargs
+        replacement = f"def {function_name}(query=\"\", *args, **kwargs):"
+        
+        # Only replace if the pattern is found and doesn't already have flexible args
+        if re.search(pattern, script):
+            script = re.sub(pattern, replacement, script, count=1)
+            logger.info(f"Updated function '{function_name}' signature to be flexible")
+        else:
+            logger.warning(f"Could not find function definition for '{function_name}' to update signature")
+        
+        return script
 
     def _remove_example_usage_code(self, script: str, function_name: str) -> str:
         """Remove example usage code that appears after function definitions"""
@@ -651,6 +678,16 @@ def {function_name}(*args, **kwargs):
             # Use our new minimal cleaning approach
             cleaned_script = self._remove_markdown_blocks_only(script)
             
+            # Extract function name for signature enforcement
+            metadata = self._parse_script_metadata(script)
+            function_name = metadata.get('name', 'unknown_function')
+            
+            # Ensure flexible signature for all tool functions
+            cleaned_script = self._ensure_flexible_signature(cleaned_script, function_name)
+            
+            # Remove example usage code that appears after function definitions
+            cleaned_script = self._remove_example_usage_code(cleaned_script, function_name)
+            
             # Check for function definition
             if not self._has_function_definition(cleaned_script):
                 return RepairResult(False, None, "No function definition found", "stage1_basic_cleaning")
@@ -821,11 +858,9 @@ def {function_name}(*args, **kwargs):
         return script
 
     def _remove_example_code(self, script: str) -> str:
-        """Remove example code and explanations - Now uses enhanced cleaning"""
-        # Extract function name for proper cleaning
-        metadata = self._parse_script_metadata(script)
-        function_name = metadata.get('name', 'unknown_function')
-        return self._remove_example_usage_code(script, function_name)
+        """Remove example code and explanations - DEPRECATED: We now keep all content"""
+        # Keep all content - don't remove anything
+        return script
 
     def _has_function_definition(self, script: str) -> bool:
         """Check if script has a function definition"""
@@ -1253,8 +1288,7 @@ def {function_name}({args}):
                 "system vision capabilities",
                 "built-in vision",
                 "no external libraries",
-                "python standard library only",
-                "(or other built-in modules only)"
+                "python standard library only"
             ]
             
             if requires_clean.lower() in [r.lower() for r in invalid_requires]:
