@@ -489,7 +489,7 @@ def mcp_agent_node(state: State) -> Command[Literal["evaluator"]]:
                 
                 # Create the function
                 logger.info(f"Attempting to create function for {tool_name}...")
-                function, metadata, cleaned_script = mcp_factory.create_mcp_from_script(tool_name, script_content)
+                function, metadata = mcp_factory.create_mcp_from_script(tool_name, script_content)
                 
                 if function:
                     # Log function details
@@ -500,7 +500,7 @@ def mcp_agent_node(state: State) -> Command[Literal["evaluator"]]:
                     # Register the tool with cleaned script content
                     logger.info(f"Attempting to register tool {tool_name}...")
                     # Ensure we always have valid script content to save
-                    script_to_register = cleaned_script if cleaned_script else script_content
+                    script_to_register = script_content # No need to clean here, as create_mcp_from_script doesn't return cleaned_script
                     logger.debug(f"Registering tool {tool_name} with script length: {len(script_to_register)}")
                     success = mcp_registry.register_tool(tool_name, function, metadata, script_to_register)
                     if success:

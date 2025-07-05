@@ -211,7 +211,7 @@ class MCPRegistry:
                 metadata = tool_data.get('metadata', {})
 
                 if name and script_content:
-                    function, _, _ = mcp_factory.create_mcp_from_script(name, script_content)
+                    function, _ = mcp_factory.create_mcp_from_script(name, script_content)
                     if function:
                         tool = MCPTool(
                             name=name,
