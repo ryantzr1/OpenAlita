@@ -7,6 +7,7 @@ Simple command-line interface for running GAIA benchmark tests.
 
 import sys
 import os
+os.environ["BROWSER_USE_CHROMIUM_SANDBOX"] = "false"
 import argparse
 import json
 import time
@@ -165,7 +166,9 @@ def main():
                     print(f"\n{status} Question {processed_count} completed | Accuracy: {current_accuracy:.1f}% ({correct_answers}/{processed_count})")
                     print(f"   Question: {result['question'][:100]}...")
                     print(f"   Level: {result['level']}")
-                    print(f"   Full Response: {result['full_response'][:500]}...")
+                    print(f"   Expected Answer: {result['expected_answer']}")
+                    print(f"   Actual Answer: {result['actual_answer']}")
+                    # print(f"   Full Response: {result['full_response'][:500]}...")
                     print()
     
     except KeyboardInterrupt:

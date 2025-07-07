@@ -5,6 +5,7 @@ import requests
 import base64
 from dotenv import load_dotenv
 
+
 class LLMProvider:
     """Placeholder for interacting with an LLM API like DeepSeek."""
     

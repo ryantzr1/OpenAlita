@@ -170,6 +170,7 @@ Response:"""
             }
             
             # Request search results with content scraping
+            # response = self.session.post(api_url, headers=headers, json=data, timeout=30)
             response = self.session.post(api_url, headers=headers, json=data, timeout=30)
             
             # Parse the response
