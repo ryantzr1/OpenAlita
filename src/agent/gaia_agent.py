@@ -438,7 +438,7 @@ Provide ONLY the final answer (no explanation, no quotes, just the answer):"""
             logger.error(f"Error loading GAIA questions from {jsonl_file_path}: {e}")
             return []
     
-    def run_gaia_benchmark(self, jsonl_file_path: str, max_questions: Optional[int] = None, verbose: bool = False) -> Generator[Dict[str, Any], None, None]:
+    def run_gaia_benchmark(self, jsonl_file_path: str, max_questions: Optional[int] = None, verbose: bool = False, skip_tasks: set = ()) -> Generator[Dict[str, Any], None, None]:
         """Run GAIA benchmark on questions from JSONL file"""
         logger.info(f"Starting GAIA benchmark with file: {jsonl_file_path}")
         
@@ -455,6 +455,13 @@ Provide ONLY the final answer (no explanation, no quotes, just the answer):"""
         
         for i, question in enumerate(questions, 1):
             logger.info(f"Processing question {i}/{total_questions}: {question.task_id}")
+
+            # Skip if already processed and resuming
+            if question.task_id in skip_tasks:
+                if verbose:
+                    print(f"⏭️  Skipping {question.task_id} (already answered)")
+                yield {"task_id": question.task_id, "skipped": True}
+                continue
             
             # Process the question
             response_chunks = []

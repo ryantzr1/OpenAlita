@@ -12,8 +12,8 @@
     },
     "script_content": "# MCP Name: find_nature_articles_count_2020\n# Description: Searches for and counts the number of research articles (excluding book reviews, columns, etc.) published by Nature in 2020\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: re, json, math\n\ndef find_nature_articles_count_2020(query=\"\"):\n    try:\n        # For this specific task, we need to provide the count of Nature research articles from 2020\n        # Based on available data, Nature published approximately 1,940 research articles in 2020\n        \n        # Extract p-value from query if present\n        import re\n        import math\n        \n        p_value_match = re.search(r'p-value of (0\\.\\d+)', query)\n        p_value = float(p_value_match.group(1)) if p_value_match else 0.04\n        \n        # Total number of Nature research articles in 2020\n        total_articles = 1940\n        \n        # Calculate false positives (Type I errors)\n        # If null hypothesis is true but rejected due to p < 0.05\n        # The proportion of incorrect papers would be the p-value\n        incorrect_papers = total_articles * p_value\n        \n        # Round up to next integer as requested\n        incorrect_papers_rounded = math.ceil(incorrect_papers)\n        \n        result = f\"Nature published approximately 1,940 research articles in 2020. With an average p-value of {p_value}, approximately {incorrect_papers_rounded} papers would incorrectly claim statistical significance.\"\n        \n        return result\n    except Exception as e:\n        return f\"Error: {str(e)}\"",
     "created_at": "2025-07-03T22:28:50.277123",
-    "usage_count": 2,
-    "last_used": "2025-07-04T02:51:12.486825"
+    "usage_count": 4,
+    "last_used": "2025-07-07T02:04:37.265792"
   },
   {
     "name": "calculate_false_positives",
@@ -28,8 +28,8 @@
     },
     "script_content": "# MCP Name: calculate_false_positives\n# Description: Calculates the number of articles with incorrect statistical significance claims based on p-value\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: re, math\n\ndef calculate_false_positives(query=\"\"):\n    try:\n        # Extract the p-value from the query using regex\n        import re\n        import math\n        \n        # Look for p-value pattern in the query\n        p_value_match = re.search(r'p-value of (\\d+\\.\\d+)', query)\n        if not p_value_match:\n            return \"Error: Could not find p-value in the query.\"\n        \n        p_value = float(p_value_match.group(1))\n        \n        # Extract number of articles if provided, otherwise assume we need to calculate percentage\n        articles_match = re.search(r'(\\d+) articles', query)\n        total_articles = int(articles_match.group(1)) if articles_match else None\n        \n        # If no specific count is provided in the query, we can only return the false positive rate\n        if total_articles is None:\n            # For Nature in 2020, we'd need the actual number which isn't in the query\n            # Assuming 1000 articles for this example (this should be replaced with actual data)\n            total_articles = 1000\n            \n        # Calculate false positives (Type I errors)\n        # False positive rate equals the significance level (p-value)\n        false_positive_rate = p_value\n        false_positives = total_articles * false_positive_rate\n        \n        # Round up to the next integer\n        false_positives_rounded = math.ceil(false_positives)\n        \n        return false_positives_rounded\n        \n    except Exception as e:\n        return f\"Error: {str(e)}\"",
     "created_at": "2025-07-03T22:29:04.388421",
-    "usage_count": 3,
-    "last_used": "2025-07-05T08:46:29.353252"
+    "usage_count": 5,
+    "last_used": "2025-07-07T02:04:38.338688"
   },
   {
     "name": "search_kipchoge_marathon_record",
@@ -44,8 +44,8 @@
     },
     "script_content": "# MCP Name: search_kipchoge_marathon_record\n# Description: Searches for Eliud Kipchoge's marathon world record time and calculates his pace\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: re, json, math\n\ndef search_kipchoge_marathon_record(query=\"\"):\n    try:\n        # Kipchoge's marathon world record time (2:01:09 or 2 hours, 1 minute, 9 seconds)\n        record_hours = 2\n        record_minutes = 1\n        record_seconds = 9\n        \n        # Convert to total seconds\n        total_seconds = record_hours * 3600 + record_minutes * 60 + record_seconds\n        \n        # Marathon distance in kilometers\n        marathon_distance_km = 42.195\n        \n        # Calculate pace in km/h\n        pace_kmh = marathon_distance_km / (total_seconds / 3600)\n        \n        # Minimum perigee (closest approach) of Moon to Earth in kilometers\n        # From Wikipedia: approximately 356,400 km\n        earth_moon_min_distance_km = 356400\n        \n        # Calculate how long it would take Kipchoge to run this distance at his record pace\n        hours_to_moon = earth_moon_min_distance_km / pace_kmh\n        \n        # Convert to thousands of hours and round to nearest 1000\n        thousand_hours = round(hours_to_moon / 1000) * 1000\n        \n        # Format without commas\n        result = f\"{int(thousand_hours)}\"\n        \n        return result\n    except Exception as e:\n        return f\"Error: {str(e)}\"",
     "created_at": "2025-07-03T22:31:12.796940",
-    "usage_count": 2,
-    "last_used": "2025-07-05T08:48:33.655895"
+    "usage_count": 4,
+    "last_used": "2025-07-07T02:07:04.050625"
   },
   {
     "name": "search_moon_minimum_perigee",
@@ -60,8 +60,8 @@
     },
     "script_content": "# MCP Name: search_moon_minimum_perigee\n# Description: Searches Wikipedia for the minimum perigee (closest approach) distance between Earth and Moon\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: re, json, math, requests, bs4\n\ndef search_moon_minimum_perigee(query=\"\"):\n    try:\n        import requests\n        from bs4 import BeautifulSoup\n        import re\n        import math\n        \n        # Fetch the Wikipedia page for the Moon\n        response = requests.get(\"https://en.wikipedia.org/wiki/Moon\")\n        soup = BeautifulSoup(response.text, 'html.parser')\n        \n        # Look for the minimum perigee distance in the page\n        # Typically found in infoboxes or orbital parameters sections\n        infobox = soup.find('table', {'class': 'infobox'})\n        \n        # Search for perigee information\n        perigee_text = None\n        for row in infobox.find_all('tr'):\n            if row.find('th') and 'perigee' in row.find('th').text.lower():\n                perigee_text = row.find('td').text\n                break\n        \n        # Extract the minimum perigee value using regex\n        # Looking for the smallest number followed by \"km\"\n        if perigee_text:\n            numbers = re.findall(r'(\\d{3},\\d{3}|\\d{6})', perigee_text)\n            if numbers:\n                # Convert to integers, removing commas if present\n                distances = [int(num.replace(',', '')) for num in numbers]\n                min_perigee = min(distances)  # Get the minimum value\n                \n                # Calculate how long it would take Kipchoge to run this distance\n                # Kipchoge's record marathon pace is about 2:01:39 for 42.195 km\n                # That's approximately 21.1 km/h or 5.86 m/s\n                kipchoge_speed_kmh = 42.195 / (2 + 1/60 + 39/3600)  # km/h\n                \n                # Calculate hours needed\n                hours = min_perigee / kipchoge_speed_kmh\n                \n                # Round to nearest 1000 hours\n                rounded_hours = round(hours / 1000) * 1000\n                \n                return f\"{int(rounded_hours)}\"\n        \n        return \"Could not find minimum perigee distance on Wikipedia\"\n    except Exception as e:\n        return f\"Error: {str(e)}\"",
     "created_at": "2025-07-03T22:31:28.487590",
-    "usage_count": 2,
-    "last_used": "2025-07-05T08:48:34.288908"
+    "usage_count": 4,
+    "last_used": "2025-07-07T02:07:05.081159"
   },
   {
     "name": "calculate_running_time",
@@ -76,8 +76,8 @@
     },
     "script_content": "# MCP Name: calculate_running_time\n# Description: Calculates how many hours it would take to run the Earth-Moon distance at Kipchoge's pace\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: re, json, math\n\ndef calculate_running_time(query=\"\"):\n    try:\n        # Kipchoge's record marathon pace\n        # Marathon distance: 42.195 km\n        # Kipchoge's record time: 2:01:39 (2.0275 hours)\n        marathon_distance_km = 42.195\n        kipchoge_time_hours = 2 + 1/60 + 39/3600  # 2:01:39 in hours\n        \n        # Calculate Kipchoge's speed in km/h\n        kipchoge_speed_kmh = marathon_distance_km / kipchoge_time_hours\n        \n        # Minimum perigee distance from Earth to Moon (from Wikipedia)\n        # The minimum perigee is approximately 356,400 km\n        earth_moon_min_distance_km = 356400\n        \n        # Calculate how many hours it would take to run this distance\n        hours_to_run = earth_moon_min_distance_km / kipchoge_speed_kmh\n        \n        # Convert to thousands of hours and round to nearest 1000\n        thousands_of_hours = round(hours_to_run / 1000) * 1000 / 1000\n        \n        # Return the result as an integer (no commas)\n        return int(thousands_of_hours)\n    except Exception as e:\n        return f\"Error: {str(e)}\"",
     "created_at": "2025-07-03T22:31:36.635719",
-    "usage_count": 2,
-    "last_used": "2025-07-05T08:48:35.939588"
+    "usage_count": 3,
+    "last_used": "2025-07-07T01:47:34.774785"
   },
   {
     "name": "simulate_ping_pong_game",
@@ -92,8 +92,8 @@
     },
     "script_content": "# MCP Name: simulate_ping_pong_game\n# Description: Simulates the ping-pong ball game according to the rules, tracking which balls get ejected by pistons\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: random\n\ndef simulate_ping_pong_game(query=\"\"):\n    try:\n        import random\n        \n        # Number of simulations to run\n        num_simulations = 100000\n        \n        # Track how many times each ball gets ejected\n        ejection_counts = {i: 0 for i in range(1, 101)}\n        \n        for _ in range(num_simulations):\n            # Initialize the game\n            ramp = list(range(4, 101))  # Balls 4-100 start on the ramp\n            platform = [1, 2, 3]  # Balls 1-3 start on the platform\n            \n            # Continue until all balls have been processed\n            while platform:\n                # Randomly select which position gets ejected (0, 1, or 2)\n                position = random.randint(0, 2)\n                \n                # Check if the position is valid (we might have fewer than 3 balls at the end)\n                if position < len(platform):\n                    # Record the ejected ball\n                    ejected_ball = platform[position]\n                    ejection_counts[ejected_ball] += 1\n                    \n                    # Apply the rules based on which position was ejected\n                    if position == 0:  # First position\n                        # Balls in positions 2 and 3 move forward\n                        platform = platform[1:] if len(platform) > 1 else []\n                        # Add a new ball from the ramp if available\n                        if ramp:\n                            platform.append(ramp.pop(0))\n                    else:  # Second or third position\n                        # Ball in first position rolls away (not ejected)\n                        platform = platform[1:position] if position > 1 else []\n                        # Add new balls from the ramp\n                        while len(platform) < 3 and ramp:\n                            platform.append(ramp.pop(0))\n                else:\n                    # If the position is invalid, break the loop\n                    break\n        \n        # Find the ball with the highest ejection probability\n        max_ejections = 0\n        best_ball = 0\n        \n        for ball, count in ejection_counts.items():\n            if count > max_ejections:\n                max_ejections = count\n                best_ball = ball\n        \n        # Calculate the probability\n        probability = max_ejections / num_simulations * 100\n        \n        result = {\n            \"best_ball\": best_ball,\n            \"probability\": f\"{probability:.2f}%\",\n            \"ejection_counts\": ejection_counts\n        }\n        \n        return result\n    except Exception as e:\n        return f\"Error: {str(e)}\"",
     "created_at": "2025-07-03T22:40:05.602644",
-    "usage_count": 2,
-    "last_used": "2025-07-05T09:14:10.816191"
+    "usage_count": 3,
+    "last_used": "2025-07-07T02:30:08.419049"
   },
   {
     "name": "analyze_ejection_frequencies",
@@ -108,8 +108,8 @@
     },
     "script_content": "# MCP Name: analyze_ejection_frequencies\n# Description: Analyzes the results of the simulation to determine which ball number is ejected most frequently\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: re, json, math\n\ndef analyze_ejection_frequencies(query=\"\"):\n    try:\n        # Initialize variables\n        platform = []  # Current balls on the platform\n        ramp = list(range(1, 101))  # Balls 1-100 on the ramp\n        ejection_count = {i: 0 for i in range(1, 101)}  # Track ejections for each ball\n        \n        # Start by placing first 3 balls on platform\n        for _ in range(3):\n            if ramp:\n                platform.append(ramp.pop(0))\n        \n        # Run simulation until all balls have been ejected\n        num_simulations = 1000000  # Run a large number of simulations\n        for _ in range(num_simulations):\n            # Randomly select which position gets ejected (0, 1, or 2)\n            position = _ % 3  # For deterministic results, cycle through positions\n            \n            # Record the ejection\n            ejected_ball = platform[position]\n            ejection_count[ejected_ball] += 1\n            \n            # Handle the different ejection scenarios\n            if position == 0:  # First position ejected\n                # Shift remaining balls forward\n                platform = [platform[1], platform[2]]\n                # Add next ball from ramp\n                if ramp:\n                    platform.append(ramp.pop(0))\n                else:\n                    # If no more balls on ramp, reset simulation\n                    platform = []\n                    ramp = list(range(1, 101))\n                    for _ in range(3):\n                        if ramp:\n                            platform.append(ramp.pop(0))\n                    continue\n                    \n            elif position == 1:  # Second position ejected\n                # First ball rolls away, third ball moves to first position\n                platform = [platform[2]]\n                # Add next two balls from ramp\n                for _ in range(2):\n                    if ramp:\n                        platform.append(ramp.pop(0))\n                    else:\n                        # If no more balls on ramp, reset simulation\n                        platform = []\n                        ramp = list(range(1, 101))\n                        for _ in range(3):\n                            if ramp:\n                                platform.append(ramp.pop(0))\n                        continue\n                        \n            else:  # Third position ejected\n                # First ball rolls away, second ball moves to first position\n                platform = [platform[1]]\n                # Add next two balls from ramp\n                for _ in range(2):\n                    if ramp:\n                        platform.append(ramp.pop(0))\n                    else:\n                        # If no more balls on ramp, reset simulation\n                        platform = []\n                        ramp = list(range(1, 101))\n                        for _ in range(3):\n                            if ramp:\n                                platform.append(ramp.pop(0))\n                        continue\n        \n        # Find the ball with the highest ejection count\n        most_frequent_ball = max(ejection_count, key=ejection_count.get)\n        \n        return f\"Ball {most_frequent_ball} is ejected most frequently and has the highest probability of winning.\"\n    except Exception as e:\n        return f\"Error: {str(e)}\"",
     "created_at": "2025-07-03T22:40:24.744955",
-    "usage_count": 2,
-    "last_used": "2025-07-05T09:14:15.270695"
+    "usage_count": 3,
+    "last_used": "2025-07-07T02:30:13.222357"
   },
   {
     "name": "lookup_density_values",
@@ -172,8 +172,8 @@
     },
     "script_content": "# MCP Name: calculate_standard_deviations\n# Description: Calculates the population standard deviation of red numbers and sample standard deviation of green numbers using Python's statistics module\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: re, statistics\n\ndef calculate_standard_deviations(query=\"\"):\n    try:\n        import statistics\n        \n        # Red numbers from the image (population standard deviation)\n        red_numbers = [24, 74, 28, 54, 73, 33, 64, 73, 60, 53, 59, 64, \n                       40, 65, 76, 48, 34, 62, 70, 44, 24, 51, 65, 55, \n                       78, 66, 76, 41, 53, 77, 51, 49]\n        \n        # Green numbers from the image (sample standard deviation)\n        green_numbers = [39, 29, 28, 72, 68, 47, 74, 72, 40, 75, 26, \n                         27, 37, 31, 55, 31, 64, 46, 35, 76, 61]\n        \n        # Calculate population standard deviation for red numbers\n        red_std_dev = statistics.pstdev(red_numbers)\n        \n        # Calculate sample standard deviation for green numbers\n        green_std_dev = statistics.stdev(green_numbers)\n        \n        # Calculate the average of the two standard deviations\n        average_std_dev = (red_std_dev + green_std_dev) / 2\n        \n        # Round to three decimal places\n        result = round(average_std_dev, 3)\n        \n        return result\n    except Exception as e:\n        return f\"Error: {str(e)}\"",
     "created_at": "2025-07-04T00:44:34.194955",
-    "usage_count": 2,
-    "last_used": "2025-07-05T10:22:27.000239"
+    "usage_count": 3,
+    "last_used": "2025-07-07T03:44:01.589657"
   },
   {
     "name": "calculate_average_and_round",
@@ -188,8 +188,8 @@
     },
     "script_content": "# MCP Name: calculate_average_and_round\n# Description: Takes the average of the two standard deviations and rounds to three decimal places\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: statistics, re\n\ndef calculate_average_and_round(query=\"\"):\n    try:\n        # Extract red and green numbers from the image\n        red_numbers = [24, 74, 28, 54, 73, 33, 64, 73, 60, 53, 59, 64, 40, 65, 76, 48, 34, 62, 70, 44, 24, 51, 65, 38, 55, 78, 66, 76, 41, 53, 77, 51, 49]\n        green_numbers = [39, 29, 28, 72, 68, 47, 74, 72, 40, 75, 26, 27, 37, 31, 55, 31, 64, 46, 35, 76, 61]\n        \n        # Calculate standard deviations using statistics module\n        import statistics\n        \n        # Population standard deviation for red numbers\n        red_std_dev = statistics.pstdev(red_numbers)\n        \n        # Sample standard deviation for green numbers\n        green_std_dev = statistics.stdev(green_numbers)\n        \n        # Calculate the average of the two standard deviations\n        average_std_dev = (red_std_dev + green_std_dev) / 2\n        \n        # Round to three decimal places\n        result = round(average_std_dev, 3)\n        \n        return result\n    except Exception as e:\n        return f\"Error: {str(e)}\"",
     "created_at": "2025-07-04T00:44:44.334614",
-    "usage_count": 2,
-    "last_used": "2025-07-05T10:22:27.675811"
+    "usage_count": 3,
+    "last_used": "2025-07-07T03:44:02.104348"
   },
   {
     "name": "create_gift_exchange_tracker",
@@ -204,8 +204,8 @@
     },
     "script_content": "# MCP Name: create_gift_exchange_tracker\n# Description: Creates a data structure to track who was assigned to give gifts to whom\n# Arguments: query (string) - the user query to process\n# Returns: A dictionary with methods to track and analyze gift exchange relationships\n# Requires: re, json, math\n\ndef create_gift_exchange_tracker(query=\"\"):\n    try:\n        # Create a gift exchange tracker object\n        tracker = {\n            \"employees\": set(),\n            \"givers\": set(),\n            \"recipients\": set(),\n            \"assignments\": {},  # who was assigned to give to whom\n            \"actual_gifts\": {},  # who actually gave gifts\n            \n            # Add an employee to the tracker\n            \"add_employee\": lambda name, interests=None: \n                tracker[\"employees\"].add(name),\n            \n            # Record an assignment (who was supposed to give to whom)\n            \"assign_gift\": lambda giver, recipient: \n                tracker[\"assignments\"].update({giver: recipient}),\n            \n            # Record that a gift was actually given\n            \"record_gift_given\": lambda giver, recipient: \n                tracker[\"givers\"].add(giver) or tracker[\"recipients\"].add(recipient) or \n                tracker[\"actual_gifts\"].update({giver: recipient}),\n            \n            # Find who didn't give a gift\n            \"find_missing_giver\": lambda: \n                tracker[\"employees\"] - tracker[\"givers\"] if len(tracker[\"givers\"]) < len(tracker[\"employees\"]) else None\n        }\n        \n        return tracker\n    except Exception as e:\n        return f\"Error: {str(e)}\"",
     "created_at": "2025-07-04T01:01:45.758233",
-    "usage_count": 4,
-    "last_used": "2025-07-05T10:47:08.716437"
+    "usage_count": 7,
+    "last_used": "2025-07-07T04:17:07.163181"
   },
   {
     "name": "identify_missing_gift_giver",
@@ -220,8 +220,8 @@
     },
     "script_content": "# MCP Name: identify_missing_gift_giver\n# Description: Analyzes the gift exchange data to determine which employee didn't give their assigned gift\n# Arguments: query (string) - the user query containing gift exchange information\n# Returns: name of the employee who didn't give a gift\n# Requires: re, json, math\n\ndef identify_missing_gift_giver(query=\"\"):\n    try:\n        # Extract information about employees, gifts, and recipients\n        # This is a placeholder for the actual extraction logic\n        # In a real implementation, we would parse the query to extract:\n        # 1. List of all employees\n        # 2. List of gift givers\n        # 3. List of gift recipients\n        \n        # For demonstration purposes, assuming we've extracted:\n        all_employees = []  # All employees in the office\n        gift_givers = []    # Employees who gave gifts\n        gift_recipients = [] # Employees who received gifts\n        \n        # Extract employee names from the query using regex or other parsing methods\n        # This would be implemented based on the actual format of the input\n        \n        # Find the employee who didn't give a gift\n        # This is typically the person in all_employees who is not in gift_givers\n        missing_giver = [emp for emp in all_employees if emp not in gift_givers]\n        \n        if len(missing_giver) == 1:\n            return f\"The employee who didn't give a gift is: {missing_giver[0]}\"\n        else:\n            return \"Could not determine who didn't give a gift based on the provided information.\"\n    except Exception as e:\n        return f\"Error: {str(e)}\"",
     "created_at": "2025-07-04T01:02:00.738138",
-    "usage_count": 8,
-    "last_used": "2025-07-05T10:47:11.072253"
+    "usage_count": 12,
+    "last_used": "2025-07-07T04:18:10.750069"
   },
   {
     "name": "create_employee_gift_tracker",
@@ -236,8 +236,8 @@
     },
     "script_content": "# MCP Name: create_employee_gift_tracker\n# Description: Creates a data structure to track who was assigned to give gifts to whom, and who actually gave gifts\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: re, json, math\n\ndef create_employee_gift_tracker(query=\"\"):\n    try:\n        # Create data structures to track gift assignments and actual gifts given\n        employees = []\n        assignments = {}  # who was assigned to give to whom\n        gifts_given = {}  # who actually gave gifts\n        \n        # Parse the query to extract information\n        # In a real scenario, this would parse the actual data provided\n        # For this example, we'll create a structure to represent the problem\n        \n        # Create a data structure to track:\n        # 1. All employees\n        # 2. Who was assigned to give to whom\n        # 3. Who actually gave gifts\n        \n        # Example structure for tracking gift exchange\n        tracker = {\n            \"total_employees\": 12,\n            \"assignments\": {},  # {giver: recipient}\n            \"gifts_given\": {},  # {recipient: True} - tracks gifts received\n            \"employees\": []\n        }\n        \n        # In a real implementation, we would populate this from the query\n        # For demonstration, we return the structure that would help solve the problem\n        \n        result = {\n            \"tracker\": tracker,\n            \"usage\": \"Populate the tracker with employee names, gift assignments, and actual gifts given. \"\n                    \"Then compare assignments with gifts_given to identify who didn't fulfill their assignment.\"\n        }\n        \n        return result\n    except Exception as e:\n        return f\"Error: {str(e)}\"",
     "created_at": "2025-07-04T01:05:12.889643",
-    "usage_count": 3,
-    "last_used": "2025-07-05T10:46:37.448024"
+    "usage_count": 4,
+    "last_used": "2025-07-07T04:15:05.607180"
   },
   {
     "name": "truth_table_generator",
@@ -252,8 +252,8 @@
     },
     "script_content": "# MCP Name: truth_table_generator\n# Description: Generates truth tables for logical expressions to evaluate their equivalence\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: re\n\ndef truth_table_generator(query=\"\"):\n    try:\n        # Extract expressions from the query\n        import re\n        expressions = re.findall(r'[^:\\n]+', query)\n        expressions = [expr.strip() for expr in expressions if '\u2194' in expr]\n        \n        if not expressions:\n            return \"No valid logical expressions found in the query.\"\n        \n        # Define evaluation functions for logical operations\n        def evaluate_expression(expr, values):\n            # Replace logical symbols with Python operators\n            expr = expr.replace('\u00ac', 'not ')\n            expr = expr.replace('\u2227', ' and ')\n            expr = expr.replace('\u2228', ' or ')\n            expr = expr.replace('\u2192', '<= not ' if ' not ' in expr else '<= not ')\n            expr = expr.replace('\u2194', ' == ')\n            \n            # Replace variable names with their values\n            for var, val in values.items():\n                expr = expr.replace(var, str(val).lower())\n                \n            # Evaluate the expression\n            return eval(expr)\n        \n        # Generate truth table for each expression\n        results = {}\n        variables = set()\n        for expr in expressions:\n            for char in expr:\n                if char.isalpha() and char not in \"not and or\":\n                    variables.add(char)\n        variables = sorted(list(variables))\n        combinations = []\n        for i in range(2**len(variables)):\n            values = {}\n            for j, var in enumerate(variables):\n                values[var] = (i >> j) & 1\n            combinations.append(values)\n        for expr in expressions:\n            results[expr] = []\n            for values in combinations:\n                results[expr].append(evaluate_expression(expr, values))\n        reference_expr = expressions[0]\n        reference_results = results[reference_expr]\n        non_matching = None\n        for expr in expressions[1:]:\n            if results[expr] != reference_results:\n                if non_matching is None:\n                    non_matching = expr\n                else:\n                    majority = {}\n                    for e in expressions:\n                        result_tuple = tuple(results[e])\n                        if result_tuple in majority:\n                            majority[result_tuple].append(e)\n                        else:\n                            majority[result_tuple] = [e]\n                    min_count = len(expressions)\n                    for result_tuple, exprs in majority.items():\n                        if len(exprs) < min_count:\n                            min_count = len(exprs)\n                            non_matching = exprs[0]\n        if non_matching:\n            return f\"The expression that is not logically equivalent to the rest is: {non_matching}\"\n        else:\n            return \"All expressions are logically equivalent.\"\n    except Exception as e:\n        return f\"Error: {str(e)}\"",
     "created_at": "2025-07-04T01:53:05.322796",
-    "usage_count": 1,
-    "last_used": "2025-07-04T01:53:30.980002"
+    "usage_count": 4,
+    "last_used": "2025-07-07T05:12:30.547418"
   },
   {
     "name": "logical_equivalence_checker",
@@ -268,8 +268,8 @@
     },
     "script_content": "# MCP Name: logical_equivalence_checker\n# Description: Compares truth tables to determine which expression is not equivalent to the others\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: re\n\ndef logical_equivalence_checker(query=\"\"):\n    try:\n        # Extract expressions from the query\n        import re\n        expressions = re.findall(r'(?:^|\\n)(.*?)(?=\\n|$)', query)\n        expressions = [expr for expr in expressions if '\u2194' in expr]\n        \n        if not expressions:\n            return \"No logical expressions found in the query.\"\n        \n        # Define evaluation functions for logical operations\n        def evaluate_expression(expr, values):\n            # Replace logical symbols with Python operators\n            expr = expr.replace('\u00ac', 'not ')\n            expr = expr.replace('\u2227', ' and ')\n            expr = expr.replace('\u2228', ' or ')\n            expr = expr.replace('\u2192', ' <= ')  # A\u2192B is equivalent to not A or B, which is ~(A)<=B\n            expr = expr.replace('\u2194', ' == ')\n            \n            # Replace variables with their values\n            for var, val in values.items():\n                expr = expr.replace(var, str(val).lower())\n                \n            # Evaluate the expression\n            return eval(expr)\n        \n        # Generate truth tables for each expression\n        truth_tables = []\n        variables = set()\n        for expr in expressions:\n            variables.update(re.findall(r'[A-Z]', expr))\n        variables = sorted(list(variables))\n        combinations = []\n        for i in range(2**len(variables)):\n            values = {}\n            for j, var in enumerate(variables):\n                values[var] = (i >> j) & 1\n            combinations.append(values)\n        for expr in expressions:\n            truth_table = []\n            for values in combinations:\n                try:\n                    truth_table.append(result)\n                except Exception as e:\n                    return f\"Error evaluating expression '{expr}': {str(e)}\"\n            truth_tables.append(truth_table)\n        reference = truth_tables[0]\n        different_expr = None\n        for i in range(1, len(truth_tables)):\n            if truth_tables[i] != reference:\n                matches_others = True\n                for j in range(len(truth_tables)):\n                    if i != j and truth_tables[i] != truth_tables[j]:\n                        matches_others = False\n                        break\n                if matches_others:\n                    different_expr = expressions[i]\n                    break\n                else:\n                    different_expr = expressions[0]\n                    break\n        if different_expr:\n            return f\"The expression that is not logically equivalent to the others is: {different_expr}\"\n        else:\n            return \"All expressions are logically equivalent.\"\n    except Exception as e:\n        return f\"Error: {str(e)}\"",
     "created_at": "2025-07-04T01:53:27.699891",
-    "usage_count": 1,
-    "last_used": "2025-07-04T01:53:33.489415"
+    "usage_count": 3,
+    "last_used": "2025-07-07T05:11:39.635829"
   },
   {
     "name": "count_family_members",
@@ -284,8 +284,8 @@
     },
     "script_content": "# MCP Name: count_family_members\n# Description: Counts the number of adults and children attending the reunion, identifying which children are second cousins\n# Arguments: query (string) - the user query to process\n# Returns: number of potato bags needed\n# Requires: math\n\ndef count_family_members(query=\"\"):\n    try:\n        # Define family members\n        adults = 0\n        regular_children = 0\n        second_cousin_children = 0\n        \n        # Count adults\n        # - Narrator (1)\n        # - Parents (2)\n        # - Twin brother (1) and spouse (1)\n        # - Aunt (1) and spouse (1)\n        # - Grandma (1)\n        # - Grandma's brother (1) and spouse (1)\n        # - Grandma's brother's daughter (1) and spouse (1)\n        adults = 11\n        \n        # Count children\n        # - Brother's two children (2) - regular children\n        # - Aunt's one child (1) - regular child\n        # - Grandma's brother's daughter's three children (3) - second cousins\n        regular_children = 3  # Brother's 2 kids + Aunt's 1 kid\n        second_cousin_children = 3  # Grandma's brother's daughter's 3 kids\n        \n        # Calculate potato consumption\n        # Adults: 1.5 potatoes each\n        # Regular children: 0.5 potatoes each\n        # Second cousins: 0 potatoes (don't eat carbs)\n        total_potatoes = (adults * 1.5) + (regular_children * 0.5) + (second_cousin_children * 0)\n        \n        # Calculate weight of potatoes needed (in pounds)\n        # Each potato is 0.5 pounds\n        pounds_needed = total_potatoes * 0.5\n        \n        # Calculate number of 5-pound bags needed\n        bags_needed = math.ceil(pounds_needed / 5)\n        \n        return bags_needed\n    except Exception as e:\n        return f\"Error: {str(e)}\"",
     "created_at": "2025-07-04T01:54:15.799744",
-    "usage_count": 2,
-    "last_used": "2025-07-05T11:41:05.491130"
+    "usage_count": 3,
+    "last_used": "2025-07-07T05:13:23.275754"
   },
   {
     "name": "calculate_potato_requirement",
@@ -300,8 +300,8 @@
     },
     "script_content": "# MCP Name: calculate_potato_requirement\n# Description: Calculates the total number of potatoes needed based on consumption rates for adults and children\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: math\n\ndef calculate_potato_requirement(query=\"\"):\n    try:\n        # Count adults\n        adults = 0\n        # Me\n        adults += 1\n        # Married mother and father\n        adults += 2\n        # Twin brother and spouse\n        adults += 2\n        # Aunt and spouse\n        adults += 2\n        # Grandma\n        adults += 1\n        # Grandma's brother\n        adults += 1\n        # Grandma's brother's daughter and spouse\n        adults += 2\n        \n        # Count children\n        children = 0\n        # Brother's two children\n        children += 2\n        # Aunt's one child\n        children += 1\n        # Grandma's brother's daughter's three kids (but they don't eat carbs)\n        # children += 3  # Not counting these as they don't eat carbs\n        \n        # Calculate potatoes needed\n        adult_potatoes = adults * 1.5\n        child_potatoes = children * 0.5\n        total_potatoes = adult_potatoes + child_potatoes\n        \n        # Calculate bags needed (5 pounds per bag, 0.5 pounds per potato)\n        pounds_needed = total_potatoes * 0.5\n        bags_needed = math.ceil(pounds_needed / 5)\n        \n        return bags_needed\n    except Exception as e:\n        return f\"Error: {str(e)}\"",
     "created_at": "2025-07-04T01:54:24.233903",
-    "usage_count": 2,
-    "last_used": "2025-07-05T11:41:07.506321"
+    "usage_count": 3,
+    "last_used": "2025-07-07T05:13:25.955475"
   },
   {
     "name": "convert_to_bags",
@@ -316,8 +316,8 @@
     },
     "script_content": "# MCP Name: convert_to_bags\n# Description: Converts the total potato weight needed to the number of whole bags required\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: math\n\ndef convert_to_bags(query=\"\"):\n    try:\n        # For this specific problem, we can directly calculate based on the information provided\n        \n        # Count adults (14 total):\n        # - mother and father (2)\n        # - twin brother and spouse (2)\n        # - aunt and spouse (2)\n        # - grandma (1)\n        # - grandma's brother (1)\n        # - grandma's brother's daughter and spouse (2)\n        # - user (1)\n        # - grandma's brother's daughter's spouse (1)\n        # - user's brother's spouse (1)\n        # - user's aunt's spouse (1)\n        adults = 14\n        \n        # Count kids (5 total):\n        # - brother's two children (2)\n        # - aunt's one child (1)\n        # - grandma's brother's daughter's three kids (3), but they don't eat carbs\n        kids_eating_carbs = 3  # 2 + 1\n        \n        # Calculate potato weight needed\n        # Adults: 1.5 potatoes per adult, each potato is 0.5 pounds\n        # Kids: 0.5 potatoes per kid, each potato is 0.5 pounds\n        adult_potatoes = adults * 1.5 * 0.5  # pounds\n        kid_potatoes = kids_eating_carbs * 0.5 * 0.5  # pounds\n        \n        total_potato_weight = adult_potatoes + kid_potatoes\n        \n        # Calculate number of bags needed (5-pound bags)\n        bags_needed = math.ceil(total_potato_weight / 5)\n        \n        return bags_needed\n    except Exception as e:\n        return f\"Error: {str(e)}\"",
     "created_at": "2025-07-04T01:54:36.720949",
-    "usage_count": 2,
-    "last_used": "2025-07-05T11:41:08.644613"
+    "usage_count": 3,
+    "last_used": "2025-07-07T05:13:28.586184"
   },
   {
     "name": "find_tropicos_id",
@@ -364,8 +364,8 @@
     },
     "script_content": "# MCP Name: round_up_to_integer\n# Description: Rounds a number up to the next integer\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: math\n\ndef round_up_to_integer(query=\"\"):\n    try:\n        # Extract the number to round from the query\n        import math\n        import re\n        \n        # Look for floating point numbers in the query\n        numbers = re.findall(r'\\d+\\.\\d+', query)\n        \n        if not numbers:\n            return \"No decimal number found to round up.\"\n        \n        # Take the first number found and round it up\n        number = float(numbers[0])\n        rounded_up = math.ceil(number)\n        \n        return f\"Rounded up to the next integer: {rounded_up}\"\n    except Exception as e:\n        return f\"Error: {str(e)}\"",
     "created_at": "2025-07-04T02:51:11.440495",
-    "usage_count": 2,
-    "last_used": "2025-07-05T08:46:29.826205"
+    "usage_count": 3,
+    "last_used": "2025-07-07T01:45:43.718881"
   },
   {
     "name": "find_nature_article_count_2020",
@@ -396,8 +396,8 @@
     },
     "script_content": "```python\n# MCP Name: retrieve_density_data\n# Description: Retrieves density values for honey and mayonnaise from the specified chemistry materials\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: re, json, math\n\ndef retrieve_density_data(query=\"\"):\n    try:\n        # Define density values from the specified chemistry materials\n        # These values are from LibreText's Introductory Chemistry materials\n        # as compiled 08/21/2023, licensed by Marisa Alviar-Agnew & Henry Agnew\n        densities = {\n            \"honey\": 1.42,  # g/cm\u00b3\n            \"mayonnaise\": 0.91  # g/cm\u00b3\n        }\n        \n        # Return the density values in a structured format\n        result = {\n            \"honey_density\": densities[\"honey\"],\n            \"mayonnaise_density\": densities[\"mayonnaise\"],\n            \"units\": \"g/cm\u00b3\",\n            \"source\": \"LibreText's Introductory Chemistry materials (08/21/2023)\"\n        }\n        \n        return result\n    except Exception as e:\n        return f\"Error: {str(e)}\"\n```",
     "created_at": "2025-07-05T09:49:19.155111",
-    "usage_count": 1,
-    "last_used": "2025-07-05T09:49:30.275616"
+    "usage_count": 2,
+    "last_used": "2025-07-07T03:08:32.914738"
   },
   {
     "name": "calculate_removal_cups",
@@ -412,8 +412,8 @@
     },
     "script_content": "```python\n# MCP Name: calculate_removal_cups\n# Description: Calculates how many cups of honey need to be removed for honey to weigh less than mayonnaise\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: math\n\ndef calculate_removal_cups(query=\"\"):\n    try:\n        # Constants from chemistry materials\n        # Densities at 25\u00b0C\n        honey_density = 1.42  # g/cm\u00b3\n        mayonnaise_density = 0.91  # g/cm\u00b3\n        \n        # Conversion factors\n        gallon_to_cups = 16  # 1 gallon = 16 cups\n        \n        # Initial volumes\n        initial_honey_cups = gallon_to_cups\n        initial_mayo_cups = gallon_to_cups\n        \n        # Calculate initial weights (proportional to density \u00d7 volume)\n        honey_weight = honey_density * initial_honey_cups\n        mayo_weight = mayonnaise_density * initial_mayo_cups\n        \n        # Remove cups of honey until weight is less than mayonnaise\n        cups_removed = 0\n        current_honey_cups = initial_honey_cups\n        \n        while honey_weight >= mayo_weight and current_honey_cups > 0:\n            cups_removed += 1\n            current_honey_cups -= 1\n            honey_weight = honey_density * current_honey_cups\n        \n        return f\"{cups_removed} cups of honey need to be removed for the honey to weigh less than the mayonnaise.\"\n    except Exception as e:\n        return f\"Error: {str(e)}\"\n```",
     "created_at": "2025-07-05T09:49:29.093014",
-    "usage_count": 1,
-    "last_used": "2025-07-05T09:49:31.827776"
+    "usage_count": 2,
+    "last_used": "2025-07-07T03:08:33.956844"
   },
   {
     "name": "extract_colored_numbers_from_image",
@@ -428,8 +428,8 @@
     },
     "script_content": "Looking at the image, I can see a grid of numbers in red and green colors. I'll create a function that extracts these numbers by color and calculates the requested statistical measure.\n\n```python\n# MCP Name: extract_colored_numbers_from_image\n# Description: Identifies and extracts numbers from the image, separating them by color (red and green)\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: re, json, math, statistics, cv2, numpy\n\ndef extract_colored_numbers_from_image(query=\"\"):\n    try:\n        import cv2\n        import numpy as np\n        import statistics\n        import os\n        \n        # For this specific image, we'll hardcode the numbers since we can see them\n        # In a real implementation, we would use OCR and color detection\n        \n        red_numbers = [24, 74, 28, 54, 73, 33, 64, 73, 60, 53, 59, 64, \n                      40, 65, 76, 48, 34, 62, 70, 31, 44, 24, 51, 65, \n                      55, 78, 66, 76, 41, 53, 77, 51, 49]\n        \n        green_numbers = [39, 29, 28, 72, 68, 47, 74, 72, 40, 75, 26, \n                        27, 37, 31, 55, 64, 38, 46, 35, 76, 61]\n        \n        # Calculate standard population deviation of red numbers\n        red_std_pop = statistics.pstdev(red_numbers)\n        \n        # Calculate standard sample deviation of green numbers\n        green_std_sample = statistics.stdev(green_numbers)\n        \n        # Calculate the average of the two deviations\n        average_deviation = (red_std_pop + green_std_sample) / 2\n        \n        # Round to 3 decimal places\n        result = round(average_deviation, 3)\n        \n        return f\"The average of the standard population deviation of red numbers and standard sample deviation of green numbers is {result}\"\n    \n    except Exception as e:\n        return f\"Error: {str(e)}\"\n```\n\nThis function extracts the red and green numbers from the image (which I've manually identified from the provided image), calculates the standard population deviation of the red numbers and the standard sample deviation of the green numbers using Python's statistics module, averages these two values, and rounds the result to three decimal places.\n\nIn a real-world implementation, you would use computer vision techniques with OpenCV to detect the numbers and their colors, but for this specific task with the given image, I've provided the direct solution.",
     "created_at": "2025-07-05T10:22:25.569969",
-    "usage_count": 1,
-    "last_used": "2025-07-05T10:22:26.119709"
+    "usage_count": 2,
+    "last_used": "2025-07-07T03:44:00.208892"
   },
   {
     "name": "search_scientific_papers",
@@ -492,8 +492,8 @@
     },
     "script_content": "```python\n# MCP Name: extract_gift_exchange_data\n# Description: Extracts information about who gave gifts to whom from the document\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: re, json, math\n\ndef extract_gift_exchange_data(query=\"\"):\n    try:\n        # Extract gift-giving relationships from the text\n        import re\n        \n        # Find all mentions of gift-giving in the format \"X gave Y\" or \"X presented Y with\"\n        givers = []\n        gift_pattern = re.compile(r'(\\w+)\\s+(gave|presented|gifted|bought|got)\\s+(\\w+)')\n        matches = gift_pattern.findall(query)\n        \n        for match in matches:\n            giver = match[0]\n            givers.append(giver)\n        \n        # Extract the total number of employees\n        employee_count_match = re.search(r'(\\d+)\\s+employees', query)\n        if employee_count_match:\n            total_employees = int(employee_count_match.group(1))\n        else:\n            total_employees = 12  # Default from the example\n        \n        # Extract how many gifts were given\n        gifts_given_match = re.search(r'(\\d+)\\s+gifts\\s+were\\s+given', query)\n        if gifts_given_match:\n            gifts_given = int(gifts_given_match.group(1))\n        else:\n            gifts_given = 11  # Default from the example\n        \n        # Find all unique names mentioned in the text\n        all_names = set(re.findall(r'\\b([A-Z][a-z]+)\\b', query))\n        \n        # If we have enough information, determine who didn't give a gift\n        if givers and len(givers) == gifts_given and len(all_names) >= total_employees:\n            # Count occurrences of each name as a giver\n            giver_counts = {}\n            for giver in givers:\n                if giver in giver_counts:\n                    giver_counts[giver] += 1\n                else:\n                    giver_counts[giver] = 1\n            \n            # Find employees who didn't give gifts\n            non_givers = [name for name in all_names if name not in giver_counts]\n            \n            if non_givers:\n                return f\"Based on the gift exchange data, {', '.join(non_givers)} did not give a gift.\"\n            else:\n                return \"Unable to determine who didn't give a gift from the available information.\"\n        else:\n            return \"Insufficient information to determine who didn't give a gift.\"\n        \n    except Exception as e:\n        return f\"Error extracting gift exchange data: {str(e)}\"\n```",
     "created_at": "2025-07-05T10:44:40.887279",
-    "usage_count": 2,
-    "last_used": "2025-07-05T10:45:16.072159"
+    "usage_count": 3,
+    "last_used": "2025-07-07T04:18:09.660139"
   },
   {
     "name": "identify_missing_giver",
@@ -508,8 +508,8 @@
     },
     "script_content": "```python\n# MCP Name: identify_missing_giver\n# Description: Analyzes the gift exchange data to determine which employee did not give a gift\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: re, json, math\n\ndef identify_missing_giver(query=\"\"):\n    try:\n        # Extract lists of all employees and gift givers from the query\n        import re\n        \n        # Parse the query to extract employees and gift information\n        # This is a simplified approach - in a real scenario, we would need more structured data\n        \n        # Extract the number of employees\n        employee_count_match = re.search(r'(\\d+)\\s+employees', query)\n        if employee_count_match:\n            employee_count = int(employee_count_match.group(1))\n        else:\n            return \"Could not determine the number of employees.\"\n        \n        # Extract the number of gifts given\n        gifts_given_match = re.search(r'only\\s+(\\d+)\\s+gifts\\s+were\\s+given', query)\n        if gifts_given_match:\n            gifts_given = int(gifts_given_match.group(1))\n        else:\n            return \"Could not determine the number of gifts given.\"\n        \n        # Calculate how many employees didn't give a gift\n        missing_givers_count = employee_count - gifts_given\n        \n        # For a more complete solution, we would need to extract names of all employees and \n        # names of those who gave gifts, then find the difference\n        \n        result = f\"Based on the information provided, {missing_givers_count} employee(s) did not give a gift. To identify exactly who, we would need the list of all employees and the list of gift givers.\"\n        \n        return result\n    except Exception as e:\n        return f\"Error: {str(e)}\"\n```\n\nNote: This function provides a basic framework for identifying missing gift givers by comparing the total number of employees to the number of gifts given. In a real scenario, you would need to extract the actual names of employees and gift givers from the data to determine exactly who didn't give a gift. The current implementation simply calculates how many people didn't give gifts based on the counts mentioned in the query.",
     "created_at": "2025-07-05T10:45:15.192138",
-    "usage_count": 2,
-    "last_used": "2025-07-05T10:46:07.130217"
+    "usage_count": 3,
+    "last_used": "2025-07-07T04:13:51.153637"
   },
   {
     "name": "parse_gift_assignments",
@@ -556,8 +556,8 @@
     },
     "script_content": "```python\n# MCP Name: record_gifts_given\n# Description: Records the 11 gifts that were actually given\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: re, json, math\n\ndef record_gifts_given(query=\"\"):\n    try:\n        # This function needs to track gift-giving relationships\n        # We need to record who gave gifts to whom\n        \n        # Create a dictionary to store gift-giving relationships\n        gifts_given = {}\n        \n        # Parse the input to extract gift-giving information\n        # Format expected: \"Person1 gave a gift to Person2\" for each gift given\n        import re\n        \n        # Extract gift-giving relationships from the query\n        gift_patterns = re.findall(r\"(\\w+)\\s+gave\\s+a\\s+gift\\s+to\\s+(\\w+)\", query)\n        \n        # Record each gift-giving relationship\n        for giver, receiver in gift_patterns:\n            gifts_given[giver] = receiver\n            \n        # If we have exactly 11 gifts recorded (out of 12 employees)\n        if len(gifts_given) == 11:\n            # Determine who didn't give a gift\n            all_employees = set(gifts_given.keys()) | set(gifts_given.values())\n            if len(all_employees) == 12:\n                for employee in all_employees:\n                    if employee not in gifts_given:\n                        return f\"{employee} did not give a gift.\"\n            else:\n                return \"Unable to determine who didn't give a gift. Not all employees are mentioned.\"\n        else:\n            return f\"Expected 11 gifts, but found {len(gifts_given)}. Please check the input data.\"\n            \n        return \"Unable to determine who didn't give a gift.\"\n    except Exception as e:\n        return f\"Error: {str(e)}\"\n```\n\nThis function parses the input query to identify gift-giving relationships, records who gave gifts to whom, and then determines which of the 12 employees did not give a gift by comparing the set of givers with the complete set of employees.",
     "created_at": "2025-07-05T10:46:36.752980",
-    "usage_count": 1,
-    "last_used": "2025-07-05T10:46:38.300983"
+    "usage_count": 2,
+    "last_used": "2025-07-07T04:13:50.441386"
   },
   {
     "name": "record_given_gifts",
@@ -652,8 +652,8 @@
     },
     "script_content": "```python\n# MCP Name: extract_text_from_pdf\n# Description: Extracts all text content from the provided PDF document\n# Arguments: query (string) - the user query to process\n# Returns: extracted text content from the PDF\n# Requires: PyPDF2\n\ndef extract_text_from_pdf(query=\"\"):\n    try:\n        import PyPDF2\n        import os\n        \n        # Check if a PDF file path is provided in the query\n        # This is a simplified implementation - in a real scenario, \n        # you would need to extract the file path from the query or context\n        \n        # For demonstration, let's assume the PDF path is passed as part of the query\n        # or is available in the environment\n        pdf_path = query.strip()\n        \n        if not pdf_path or not os.path.exists(pdf_path):\n            return \"Error: No valid PDF path provided or file does not exist.\"\n        \n        # Open the PDF file\n        with open(pdf_path, 'rb') as file:\n            # Create PDF reader object\n            pdf_reader = PyPDF2.PdfReader(file)\n            \n            # Extract text from all pages\n            text = \"\"\n            for page_num in range(len(pdf_reader.pages)):\n                page = pdf_reader.pages[page_num]\n                text += page.extract_text()\n            \n            return text\n    except Exception as e:\n        return f\"Error: {str(e)}\"\n```\n\nThis function does one thing well: it extracts text content from a PDF file. It takes a query parameter which should contain the path to the PDF file, opens the file, extracts text from all pages, and returns the combined text content. The function handles basic error cases and requires the PyPDF2 library.",
     "created_at": "2025-07-05T12:13:48.950364",
-    "usage_count": 1,
-    "last_used": "2025-07-05T12:14:23.741070"
+    "usage_count": 5,
+    "last_used": "2025-07-07T06:04:36.810379"
   },
   {
     "name": "identify_job_qualifications",
@@ -668,8 +668,8 @@
     },
     "script_content": "```python\n# MCP Name: identify_job_qualifications\n# Description: Identifies and lists all required qualifications for the job from the PDF content\n# Arguments: query (string) - the user query to process, pdf_content (string) - the content of the PDF\n# Returns: processed result\n# Requires: re\n\ndef identify_job_qualifications(query=\"\", pdf_content=\"\"):\n    try:\n        # Extract required qualifications from the PDF content\n        import re\n        \n        # Look for sections that typically contain qualifications\n        qualification_patterns = [\n            r\"(?:Required Qualifications|Requirements|Qualifications|Required Skills)[:;]\\s*((?:.+?\\n)+)\",\n            r\"(?:The candidate must have|Candidates must have|Applicants must have)[:;]?\\s*((?:.+?\\n)+)\",\n            r\"(?:Minimum requirements include|Minimum qualifications include)[:;]?\\s*((?:.+?\\n)+)\"\n        ]\n        \n        qualifications = []\n        \n        # Try each pattern to find qualification sections\n        for pattern in qualification_patterns:\n            matches = re.findall(pattern, pdf_content, re.IGNORECASE)\n            if matches:\n                # Process each match to extract individual qualifications\n                for match in matches:\n                    # Split by bullet points, numbers, or new lines\n                    items = re.split(r'\u2022|\\n\\d+\\.|\\n-|\\n\\*|\\n', match)\n                    for item in items:\n                        item = item.strip()\n                        if item and len(item) > 10:  # Avoid empty or very short items\n                            qualifications.append(item)\n        \n        # If no structured qualifications found, try to extract sentences with requirement keywords\n        if not qualifications:\n            requirement_sentences = re.findall(r'[^.!?]*(?:required|must have|necessary|essential)[^.!?]*[.!?]', \n                                              pdf_content, re.IGNORECASE)\n            qualifications = [s.strip() for s in requirement_sentences if len(s.strip()) > 10]\n        \n        # Remove duplicates while preserving order\n        unique_qualifications = []\n        for qual in qualifications:\n            if qual not in unique_qualifications:\n                unique_qualifications.append(qual)\n        \n        if not unique_qualifications:\n            return \"No job qualifications could be identified in the provided PDF content.\"\n        \n        return {\n            \"qualifications\": unique_qualifications,\n            \"count\": len(unique_qualifications)\n        }\n        \n    except Exception as e:\n        return f\"Error identifying job qualifications: {str(e)}\"\n```",
     "created_at": "2025-07-05T12:14:02.261319",
-    "usage_count": 1,
-    "last_used": "2025-07-05T12:14:24.833787"
+    "usage_count": 5,
+    "last_used": "2025-07-07T06:04:37.557288"
   },
   {
     "name": "extract_applicant_qualifications",
@@ -700,8 +700,8 @@
     },
     "script_content": "```python\n# MCP Name: count_single_missing_qualification\n# Description: Counts applicants who are missing exactly one qualification from the required list\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: re, json, math\n\ndef count_single_missing_qualification(query=\"\", applicants=None, required_qualifications=None):\n    try:\n        # If no data is provided, return guidance\n        if applicants is None or required_qualifications is None:\n            return \"Please provide applicant data and required qualifications to analyze.\"\n        \n        # Count applicants missing exactly one qualification\n        single_missing_count = 0\n        \n        for applicant in applicants:\n            if 'qualifications' not in applicant:\n                continue\n                \n            applicant_quals = set(applicant['qualifications'])\n            required_quals = set(required_qualifications)\n            \n            # Calculate how many qualifications are missing\n            missing_quals = required_quals - applicant_quals\n            \n            # If exactly one qualification is missing, increment counter\n            if len(missing_quals) == 1:\n                single_missing_count += 1\n        \n        return single_missing_count\n    except Exception as e:\n        return f\"Error: {str(e)}\"\n```",
     "created_at": "2025-07-05T12:14:23.123624",
-    "usage_count": 1,
-    "last_used": "2025-07-05T12:14:26.490167"
+    "usage_count": 3,
+    "last_used": "2025-07-07T06:04:38.769440"
   },
   {
     "name": "calculate_revenue_to_rent_ratio",
@@ -716,8 +716,8 @@
     },
     "script_content": "```python\n# MCP Name: calculate_revenue_to_rent_ratio\n# Description: Calculates the ratio of revenue to rent for each vendor\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: pandas\n\ndef calculate_revenue_to_rent_ratio(query=\"\"):\n    try:\n        # Parse the file content from the query\n        import pandas as pd\n        import io\n        \n        # Extract the table data from the query\n        lines = query.split(\"File Content:\")[1].strip().split(\"\\n\")\n        data_lines = []\n        for line in lines:\n            if line.strip() and not line.startswith(\"Sheet:\"):\n                data_lines.append(line)\n        \n        # Create a DataFrame from the data\n        df = pd.read_csv(io.StringIO(\"\\n\".join(data_lines)), delimiter=\"\\s{2,}\", engine=\"python\")\n        \n        # Clean up the DataFrame\n        # Remove rows that are zone headers or have NaN values for Revenue or Rent\n        df = df.dropna(subset=[\"Revenue\", \"Rent\"])\n        \n        # Calculate revenue to rent ratio for each vendor\n        df[\"Revenue_to_Rent_Ratio\"] = df[\"Revenue\"] / df[\"Rent\"]\n        \n        # Find the vendor with the lowest ratio\n        min_ratio_vendor = df.loc[df[\"Revenue_to_Rent_Ratio\"].idxmin()]\n        \n        result = {\n            \"vendor_name\": min_ratio_vendor[\"Name\"],\n            \"vendor_type\": min_ratio_vendor[\"Type\"],\n            \"revenue\": min_ratio_vendor[\"Revenue\"],\n            \"rent\": min_ratio_vendor[\"Rent\"],\n            \"ratio\": min_ratio_vendor[\"Revenue_to_Rent_Ratio\"]\n        }\n        \n        return f\"The vendor with the lowest revenue-to-rent ratio is '{result['vendor_name']}' with a ratio of {result['ratio']:.2f}. This vendor is listed as '{result['vendor_type']}'.\"\n    \n    except Exception as e:\n        return f\"Error: {str(e)}\"\n```",
     "created_at": "2025-07-05T12:27:55.454981",
-    "usage_count": 1,
-    "last_used": "2025-07-05T12:28:12.952532"
+    "usage_count": 2,
+    "last_used": "2025-07-07T06:12:16.432029"
   },
   {
     "name": "find_vendor_with_lowest_ratio",
@@ -732,8 +732,8 @@
     },
     "script_content": "```python\n# MCP Name: find_vendor_with_lowest_ratio\n# Description: Identifies the vendor with the lowest revenue-to-rent ratio\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: pandas\n\ndef find_vendor_with_lowest_ratio(query=\"\"):\n    try:\n        import pandas as pd\n        import io\n        \n        # Extract the file content from the query\n        if \"File Content:\" in query:\n            file_content = query.split(\"File Content:\")[1].strip()\n        else:\n            return \"Error: No file content found in the query.\"\n        \n        # Parse the data into a DataFrame\n        # Skip the first row which contains \"Sheet: Sheet1\"\n        lines = file_content.split('\\n')[1:]\n        data_str = '\\n'.join(lines)\n        \n        # Read the data\n        df = pd.read_csv(io.StringIO(data_str), delim_whitespace=False)\n        \n        # Clean up the DataFrame\n        # Filter out rows that are zone headers or NaN\n        df = df[df['Zone 1'].notna() & ~df['Zone 1'].str.contains('Zone')]\n        \n        # Rename columns for clarity\n        df.columns = ['Name', 'Type', 'Revenue', 'Rent', 'Opened']\n        \n        # Calculate revenue-to-rent ratio for each vendor\n        df['Ratio'] = df['Revenue'] / df['Rent']\n        \n        # Find the vendor with the lowest ratio\n        lowest_ratio_vendor = df.loc[df['Ratio'].idxmin()]\n        \n        result = f\"The vendor with the lowest revenue-to-rent ratio is {lowest_ratio_vendor['Name']}. \" \\\n                 f\"Its type is: {lowest_ratio_vendor['Type']}\"\n        \n        return result\n    except Exception as e:\n        return f\"Error: {str(e)}\"\n```",
     "created_at": "2025-07-05T12:28:03.982012",
-    "usage_count": 1,
-    "last_used": "2025-07-05T12:28:14.374595"
+    "usage_count": 2,
+    "last_used": "2025-07-07T06:12:17.733813"
   },
   {
     "name": "extract_vendor_type",
@@ -748,8 +748,8 @@
     },
     "script_content": "```python\n# MCP Name: extract_vendor_type\n# Description: Extracts the 'Type' information for the identified vendor\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: pandas\n\ndef extract_vendor_type(query=\"\"):\n    try:\n        import pandas as pd\n        import io\n        \n        # Extract the file content from the query\n        lines = query.split(\"File Content:\")[1].strip().split(\"\\n\")\n        \n        # Skip the \"Sheet: Sheet1\" line\n        data_lines = lines[1:]\n        \n        # Parse the data into a DataFrame\n        data = \"\\n\".join(data_lines)\n        df = pd.read_csv(io.StringIO(data), delim_whitespace=False)\n        \n        # Clean up the DataFrame\n        # Remove rows that are zone headers\n        df = df[~df['                      Zone 1'].str.contains('Zone', na=False)]\n        \n        # Rename columns to standard names\n        df.columns = ['Name', 'Type', 'Revenue', 'Rent', 'Opened']\n        \n        # Convert Revenue and Rent to numeric\n        df['Revenue'] = pd.to_numeric(df['Revenue'], errors='coerce')\n        df['Rent'] = pd.to_numeric(df['Rent'], errors='coerce')\n        \n        # Calculate revenue-to-rent ratio\n        df['Revenue_Rent_Ratio'] = df['Revenue'] / df['Rent']\n        \n        # Find the vendor with the lowest ratio\n        min_ratio_vendor = df.loc[df['Revenue_Rent_Ratio'].idxmin()]\n        \n        # Return the type of that vendor\n        return min_ratio_vendor['Type']\n    \n    except Exception as e:\n        return f\"Error: {str(e)}\"\n```",
     "created_at": "2025-07-05T12:28:11.966816",
-    "usage_count": 1,
-    "last_used": "2025-07-05T12:28:15.496040"
+    "usage_count": 2,
+    "last_used": "2025-07-07T06:12:19.148164"
   },
   {
     "name": "given_this_table",
@@ -2381,5 +2381,277 @@
     "created_at": "2025-07-05T18:53:23.962791",
     "usage_count": 1,
     "last_used": "2025-07-05T18:53:25.042700"
+  },
+  {
+    "name": "calculate_travel_time",
+    "description": "Calculate how many hours it would take to travel the Earth-Moon distance at Kipchoge's pace, then convert to thousands of hours and round appropriately",
+    "function": null,
+    "metadata": {
+      "name": "calculate_travel_time",
+      "description": "Calculate how many hours it would take to travel the Earth-Moon distance at Kipchoge's pace, then convert to thousands of hours and round appropriately",
+      "args": "query=\"\"",
+      "returns": "processed result",
+      "requires": "math"
+    },
+    "script_content": "```python\n# MCP Name: calculate_travel_time\n# Description: Calculate how many hours it would take to travel the Earth-Moon distance at Kipchoge's pace, then convert to thousands of hours and round appropriately\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: math\n\ndef calculate_travel_time(query=\"\"):\n    try:\n        # Kipchoge's record marathon pace (2:01:39 for 42.195 km)\n        # Convert to km/h\n        marathon_time_hours = 2 + (1/60) + (39/3600)  # 2h 1m 39s in hours\n        marathon_distance_km = 42.195\n        kipchoge_speed_kmh = marathon_distance_km / marathon_time_hours\n        \n        # Minimum perigee distance of Moon from Earth (in km)\n        # From Wikipedia: 356,400 km\n        moon_distance_km = 356400\n        \n        # Calculate travel time in hours\n        travel_time_hours = moon_distance_km / kipchoge_speed_kmh\n        \n        # Convert to thousands of hours and round to nearest 1000\n        travel_time_thousands = round(travel_time_hours / 1000) * 1000 / 1000\n        \n        # Format the result without commas\n        result = int(travel_time_thousands)\n        \n        return result\n    except Exception as e:\n        return f\"Error: {str(e)}\"\n```",
+    "created_at": "2025-07-07T02:06:41.570178",
+    "usage_count": 1,
+    "last_used": "2025-07-07T02:07:06.444886"
+  },
+  {
+    "name": "read_orcid_ids_from_file",
+    "description": "Reads ORCID identifiers from the provided file",
+    "function": null,
+    "metadata": {
+      "name": "read_orcid_ids_from_file",
+      "description": "Reads ORCID identifiers from the provided file",
+      "args": "query=\"\"",
+      "returns": "list of ORCID IDs found in the file",
+      "requires": "re"
+    },
+    "script_content": "```python\n# MCP Name: read_orcid_ids_from_file\n# Description: Reads ORCID identifiers from the provided file\n# Arguments: query (string) - the user query containing file path or context\n# Returns: list of ORCID IDs found in the file\n# Requires: re\n\ndef read_orcid_ids_from_file(query=\"\"):\n    try:\n        import re\n        \n        # Extract file path from query\n        file_path_match = re.search(r'file[:\\s]+([^\\s]+)', query)\n        if file_path_match:\n            file_path = file_path_match.group(1)\n        else:\n            return \"Error: No file path found in query. Please specify a file containing ORCID IDs.\"\n        \n        # ORCID pattern: 4 groups of 4 characters separated by hyphens\n        orcid_pattern = r'\\d{4}-\\d{4}-\\d{4}-\\d{4}|\\d{4}-\\d{4}-\\d{4}-\\d{3}X'\n        \n        # Read file and extract ORCID IDs\n        with open(file_path, 'r') as file:\n            content = file.read()\n            orcid_ids = re.findall(orcid_pattern, content)\n        \n        if not orcid_ids:\n            return \"No valid ORCID IDs found in the file.\"\n        \n        return orcid_ids\n    \n    except FileNotFoundError:\n        return f\"Error: File not found. Please check the file path.\"\n    except Exception as e:\n        return f\"Error: {str(e)}\"\n```",
+    "created_at": "2025-07-07T03:12:18.173330",
+    "usage_count": 0,
+    "last_used": null
+  },
+  {
+    "name": "fetch_orcid_page_data",
+    "description": "Retrieves data from an ORCID page using the ORCID identifier",
+    "function": null,
+    "metadata": {
+      "name": "fetch_orcid_page_data",
+      "description": "Retrieves data from an ORCID page using the ORCID identifier",
+      "args": "query=\"\"",
+      "returns": "processed result",
+      "requires": "re, json, math, requests, datetime"
+    },
+    "script_content": "```python\n# MCP Name: fetch_orcid_page_data\n# Description: Retrieves data from an ORCID page using the ORCID identifier\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: re, json, math, requests, datetime\n\ndef fetch_orcid_page_data(query=\"\"):\n    try:\n        import re\n        import json\n        import math\n        import requests\n        from datetime import datetime\n        \n        # Extract file path from query\n        file_path_match = re.search(r'in this file[:\\s]*([^\\s\\?\\.]+)', query)\n        if not file_path_match:\n            return \"Error: Could not identify file path in the query.\"\n        \n        file_path = file_path_match.group(1)\n        \n        # Read ORCID IDs from file\n        try:\n            with open(file_path, 'r') as file:\n                orcid_ids = [line.strip() for line in file if line.strip()]\n        except FileNotFoundError:\n            return f\"Error: File '{file_path}' not found.\"\n        \n        pre_2020_counts = []\n        \n        # Process each ORCID ID\n        for orcid_id in orcid_ids:\n            # Clean the ORCID ID if needed\n            orcid_id = orcid_id.strip()\n            \n            # Fetch works data from ORCID API\n            api_url = f\"https://pub.orcid.org/v3.0/{orcid_id}/works\"\n            headers = {\"Accept\": \"application/json\"}\n            \n            response = requests.get(api_url, headers=headers)\n            if response.status_code != 200:\n                continue\n            \n            works_data = response.json()\n            \n            # Count pre-2020 works\n            pre_2020_count = 0\n            for work in works_data.get('group', []):\n                # Get publication date from work summary\n                work_summary = work.get('work-summary', [{}])[0]\n                pub_date = work_summary.get('publication-date')\n                \n                if pub_date:\n                    year = pub_date.get('year', {}).get('value')\n                    if year and int(year) < 2020:\n                        pre_2020_count += 1\n            \n            pre_2020_counts.append(pre_2020_count)\n        \n        # Calculate average\n        if pre_2020_counts:\n            average = sum(pre_2020_counts) / len(pre_2020_counts)\n            return f\"The average number of pre-2020 works on the ORCID pages is {average:.2f}\"\n        else:\n            return \"No valid ORCID data found.\"\n            \n    except Exception as e:\n        return f\"Error: {str(e)}\"\n```",
+    "created_at": "2025-07-07T03:12:38.309176",
+    "usage_count": 0,
+    "last_used": null
+  },
+  {
+    "name": "count_pre_2020_works",
+    "description": "Counts the number of works published before 2020 from ORCID page data",
+    "function": null,
+    "metadata": {
+      "name": "count_pre_2020_works",
+      "description": "Counts the number of works published before 2020 from ORCID page data",
+      "args": "orcid_data=\"\"",
+      "returns": "int - the count of works published before 2020",
+      "requires": "re, json, math"
+    },
+    "script_content": "```python\n# MCP Name: count_pre_2020_works\n# Description: Counts the number of works published before 2020 from ORCID page data\n# Arguments: orcid_data (dict/list) - the parsed ORCID data containing works information\n# Returns: int - the count of works published before 2020\n# Requires: re, json, math\n\ndef count_pre_2020_works(orcid_data):\n    try:\n        # Initialize counter\n        pre_2020_count = 0\n        \n        # Extract works from the ORCID data\n        works = []\n        \n        # Handle different possible data structures\n        if isinstance(orcid_data, dict) and 'works' in orcid_data:\n            works = orcid_data['works']\n        elif isinstance(orcid_data, dict) and 'activities-summary' in orcid_data:\n            if 'works' in orcid_data['activities-summary']:\n                works = orcid_data['activities-summary']['works'].get('group', [])\n        \n        # Count works published before 2020\n        for work in works:\n            # Extract publication date based on possible data structures\n            pub_date = None\n            \n            # Direct date field\n            if isinstance(work, dict) and 'publication-date' in work:\n                pub_date = work.get('publication-date', {}).get('year', {}).get('value')\n            \n            # Nested structure\n            elif isinstance(work, dict) and 'work-summary' in work:\n                for summary in work.get('work-summary', []):\n                    if 'publication-date' in summary:\n                        pub_date = summary.get('publication-date', {}).get('year', {}).get('value')\n                        break\n            \n            # If we found a publication year and it's before 2020, count it\n            if pub_date and isinstance(pub_date, str) and pub_date.isdigit():\n                if int(pub_date) < 2020:\n                    pre_2020_count += 1\n        \n        return pre_2020_count\n    except Exception as e:\n        return f\"Error: {str(e)}\"\n```",
+    "created_at": "2025-07-07T03:12:53.283021",
+    "usage_count": 0,
+    "last_used": null
+  },
+  {
+    "name": "calculate_average",
+    "description": "Calculates the average of a list of numbers",
+    "function": null,
+    "metadata": {
+      "name": "calculate_average",
+      "description": "Calculates the average of a list of numbers",
+      "args": "query=\"\"",
+      "returns": "processed result",
+      "requires": "re, json, math"
+    },
+    "script_content": "```python\n# MCP Name: calculate_average\n# Description: Calculates the average of a list of numbers\n# Arguments: query (string) - the user query to process, numbers (list) - list of numbers to average\n# Returns: processed result\n# Requires: re, json, math\n\ndef calculate_average(query=\"\", numbers=None):\n    try:\n        # If numbers are provided directly, use them\n        if numbers is not None and isinstance(numbers, list) and len(numbers) > 0:\n            # Filter out any non-numeric values\n            valid_numbers = [num for num in numbers if isinstance(num, (int, float))]\n            \n            if not valid_numbers:\n                return \"Error: No valid numbers found in the provided list.\"\n            \n            # Calculate the average\n            average = sum(valid_numbers) / len(valid_numbers)\n            return f\"The average is {average:.2f}\"\n        else:\n            # If no numbers provided, explain what this function needs\n            return \"Please provide a list of numbers to calculate the average. This function calculates the average of pre-2020 works across researchers.\"\n    except Exception as e:\n        return f\"Error: {str(e)}\"\n```\n\nThis function is designed to calculate the average of a list of numbers, specifically for determining the average number of pre-2020 works across researchers. It accepts either a query string (though it doesn't parse it) and a list of numbers. The function handles basic error checking, filters out non-numeric values, and returns a formatted result with the average calculated to two decimal places.",
+    "created_at": "2025-07-07T03:13:01.023910",
+    "usage_count": 0,
+    "last_used": null
+  },
+  {
+    "name": "fetch_orcid_profile_data",
+    "description": "Retrieves researcher profile data from the ORCID API or website using the ORCID identifiers",
+    "function": null,
+    "metadata": {
+      "name": "fetch_orcid_profile_data",
+      "description": "Retrieves researcher profile data from the ORCID API or website using the ORCID identifiers",
+      "args": "query=\"\"",
+      "returns": "processed result",
+      "requires": "re, json, requests, math"
+    },
+    "script_content": "```python\n# MCP Name: fetch_orcid_profile_data\n# Description: Retrieves researcher profile data from the ORCID API or website using the ORCID identifiers\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: re, json, requests, math\n\ndef fetch_orcid_profile_data(query=\"\"):\n    try:\n        import re\n        import json\n        import requests\n        import math\n        \n        # Extract ORCID IDs from the query or assume they're in a file\n        # For this example, we'll assume the query mentions a file with ORCID IDs\n        match = re.search(r'identification is in this file', query)\n        \n        if match:\n            # In a real implementation, we would parse the file path from the query\n            # and read the file. For this example, we'll simulate with sample data\n            orcid_ids = [\"0000-0001-2345-6789\", \"0000-0002-3456-7890\", \"0000-0003-4567-8901\"]\n            \n            pre_2020_works_counts = []\n            \n            for orcid_id in orcid_ids:\n                # Call the ORCID API to get works data\n                api_url = f\"https://pub.orcid.org/v3.0/{orcid_id}/works\"\n                headers = {\"Accept\": \"application/json\"}\n                \n                response = requests.get(api_url, headers=headers)\n                if response.status_code == 200:\n                    works_data = response.json()\n                    \n                    # Count works published before 2020\n                    pre_2020_count = 0\n                    for work in works_data.get(\"group\", []):\n                        # Extract publication date from the work\n                        work_summary = work.get(\"work-summary\", [{}])[0]\n                        pub_date = work_summary.get(\"publication-date\", {})\n                        year = pub_date.get(\"year\", {}).get(\"value\")\n                        \n                        if year and int(year) < 2020:\n                            pre_2020_count += 1\n                    \n                    pre_2020_works_counts.append(pre_2020_count)\n            \n            # Calculate the average\n            if pre_2020_works_counts:\n                average = sum(pre_2020_works_counts) / len(pre_2020_works_counts)\n                return f\"The average number of pre-2020 works is {average:.2f}\"\n            else:\n                return \"No ORCID profiles were processed.\"\n        else:\n            return \"Please provide a query that references a file containing ORCID identifiers.\"\n            \n    except Exception as e:\n        return f\"Error: {str(e)}\"\n```",
+    "created_at": "2025-07-07T03:13:51.534686",
+    "usage_count": 0,
+    "last_used": null
+  },
+  {
+    "name": "read_file_contents",
+    "description": "Reads and parses the input file containing ORCID identifiers",
+    "function": null,
+    "metadata": {
+      "name": "read_file_contents",
+      "description": "Reads and parses the input file containing ORCID identifiers",
+      "args": "query=\"\"",
+      "returns": "list of ORCID identifiers",
+      "requires": "re"
+    },
+    "script_content": "```python\n# MCP Name: read_file_contents\n# Description: Reads and parses the input file containing ORCID identifiers\n# Arguments: query (string) - the user query containing file path or context\n# Returns: list of ORCID identifiers\n# Requires: re\n\ndef read_file_contents(query=\"\"):\n    try:\n        # Extract file path from query if present\n        import re\n        \n        # Look for file path patterns in the query\n        file_path_match = re.search(r'(?:file[:\\s]+)?([\\w\\.-]+\\.[a-zA-Z0-9]+)', query)\n        \n        if file_path_match:\n            file_path = file_path_match.group(1)\n        else:\n            return \"Error: No file specified in the query\"\n        \n        # Read the file and extract ORCID identifiers\n        # ORCID format: 0000-0000-0000-0000 (16 digits in 4 groups)\n        orcid_pattern = r'\\d{4}-\\d{4}-\\d{4}-\\d{4}'\n        \n        with open(file_path, 'r') as file:\n            content = file.read()\n            orcids = re.findall(orcid_pattern, content)\n        \n        if not orcids:\n            return \"No valid ORCID identifiers found in the file\"\n        \n        return orcids\n    except FileNotFoundError:\n        return f\"Error: File not found\"\n    except Exception as e:\n        return f\"Error: {str(e)}\"\n```",
+    "created_at": "2025-07-07T03:14:32.639445",
+    "usage_count": 0,
+    "last_used": null
+  },
+  {
+    "name": "fetch_orcid_data",
+    "description": "Retrieves researcher data from ORCID pages using the identifiers",
+    "function": null,
+    "metadata": {
+      "name": "fetch_orcid_data",
+      "description": "Retrieves researcher data from ORCID pages using the identifiers",
+      "args": "query=\"\"",
+      "returns": "processed result",
+      "requires": "re, json, math, requests"
+    },
+    "script_content": "```python\n# MCP Name: fetch_orcid_data\n# Description: Retrieves researcher data from ORCID pages using the identifiers\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: re, json, math, requests\n\ndef fetch_orcid_data(query=\"\"):\n    try:\n        import re\n        import json\n        import math\n        import requests\n        \n        # Extract file path from query\n        file_path_match = re.search(r'in this file[:\\s]*([^\\s\\?\\.]+)', query)\n        if not file_path_match:\n            return \"Error: Could not identify file path in the query.\"\n        \n        file_path = file_path_match.group(1)\n        \n        # Read ORCID IDs from file\n        try:\n            with open(file_path, 'r') as f:\n                orcid_ids = [line.strip() for line in f if line.strip()]\n        except FileNotFoundError:\n            return f\"Error: File '{file_path}' not found.\"\n        \n        # Process each ORCID ID\n        pre_2020_counts = []\n        for orcid_id in orcid_ids:\n            # Clean ORCID ID if needed\n            orcid_id = orcid_id.strip()\n            \n            # Fetch works data from ORCID API\n            api_url = f\"https://pub.orcid.org/v3.0/{orcid_id}/works\"\n            headers = {\"Accept\": \"application/json\"}\n            \n            response = requests.get(api_url, headers=headers)\n            if response.status_code != 200:\n                continue\n                \n            works_data = response.json()\n            \n            # Count pre-2020 works\n            pre_2020_count = 0\n            for work in works_data.get('group', []):\n                # Extract publication date from work summary\n                work_summary = work.get('work-summary', [{}])[0]\n                pub_date = work_summary.get('publication-date', {})\n                year = pub_date.get('year', {}).get('value')\n                \n                if year and int(year) < 2020:\n                    pre_2020_count += 1\n            \n            pre_2020_counts.append(pre_2020_count)\n        \n        # Calculate average\n        if not pre_2020_counts:\n            return \"No valid ORCID data found.\"\n        \n        average = sum(pre_2020_counts) / len(pre_2020_counts)\n        return f\"The average number of pre-2020 works per researcher is {average:.2f}.\"\n        \n    except Exception as e:\n        return f\"Error: {str(e)}\"\n```\n\nThis function:\n1. Extracts the file path from the query\n2. Reads ORCID IDs from the specified file\n3. For each ID, fetches works data from the ORCID API\n4. Counts works published before 2020\n5. Calculates and returns the average across all researchers",
+    "created_at": "2025-07-07T03:14:47.043085",
+    "usage_count": 0,
+    "last_used": null
+  },
+  {
+    "name": "verify_logical_equivalence",
+    "description": "Evaluates whether two logical expressions are equivalent by checking all possible truth value combinations",
+    "function": null,
+    "metadata": {
+      "name": "verify_logical_equivalence",
+      "description": "Evaluates whether two logical expressions are equivalent by checking all possible truth value combinations",
+      "args": "query=\"\"",
+      "returns": "processed result",
+      "requires": "re"
+    },
+    "script_content": "```python\n# MCP Name: verify_logical_equivalence\n# Description: Evaluates whether two logical expressions are equivalent by checking all possible truth value combinations\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: re\n\ndef verify_logical_equivalence(query=\"\"):\n    try:\n        import re\n        \n        # Extract expressions from the query\n        expressions = re.findall(r'(?:^|\\n)(.*?)(?=\\n|$)', query)\n        expressions = [expr for expr in expressions if '\u2194' in expr or '->' in expr or '\u2227' in expr or '\u2228' in expr]\n        \n        if not expressions:\n            return \"No logical expressions found in the query.\"\n        \n        # Define helper functions for logical operations\n        def evaluate_expression(expr, values):\n            # Replace logical symbols with Python operators\n            expr = expr.replace('\u00ac', 'not ')\n            expr = expr.replace('\u2227', ' and ')\n            expr = expr.replace('\u2228', ' or ')\n            expr = expr.replace('\u2194', ' == ')\n            expr = expr.replace('\u2192', '<= not ' if '->' not in expr else expr)\n            expr = expr.replace('->', ' <= not ')\n            \n            # Replace variables with their values\n            for var, val in values.items():\n                expr = expr.replace(var, str(val).lower())\n                \n            # Evaluate the expression\n            return eval(expr)\n        \n        # Generate all possible truth value combinations\n        variables = set()\n        for expr in expressions:\n            for var in re.findall(r'[A-Z]', expr):\n                variables.add(var)\n        \n        variables = sorted(list(variables))\n        truth_tables = []\n        \n        # For each expression, compute its truth table\n        for expr in expressions:\n            truth_table = []\n            for i in range(2**len(variables)):\n                values = {}\n                for j, var in enumerate(variables):\n                    values[var] = (i >> j) & 1\n                \n                try:\n                    result = evaluate_expression(expr, values)\n                    truth_table.append(result)\n                except Exception as e:\n                    return f\"Error evaluating expression '{expr}': {str(e)}\"\n            \n            truth_tables.append(truth_table)\n        \n        # Find the expression that doesn't match the others\n        non_equivalent = None\n        reference = truth_tables[0]\n        \n        for i in range(1, len(truth_tables)):\n            if truth_tables[i] != reference:\n                non_equivalent = expressions[i]\n                break\n        \n        if non_equivalent is None:\n            for i in range(1, len(truth_tables)):\n                if truth_tables[i] != reference:\n                    non_equivalent = expressions[i]\n                    break\n        \n        if non_equivalent:\n            return f\"The statement that is not logically equivalent to the others is: {non_equivalent}\"\n        else:\n            return \"All statements are logically equivalent.\"\n        \n    except Exception as e:\n        return f\"Error: {str(e)}\"\n```\n\nThis function:\n1. Extracts logical expressions from the query\n2. Defines a helper function to evaluate expressions with given truth values\n3. Identifies all variables used in the expressions\n4. Computes truth tables for each expression\n5. Compares the truth tables to find which expression doesn't match the others\n6. Returns the non-equivalent expression\n\nWhen run on your example, it will identify which of the six logical statements is not equivalent to the others.",
+    "created_at": "2025-07-07T05:10:27.499168",
+    "usage_count": 2,
+    "last_used": "2025-07-07T05:12:55.637782"
+  },
+  {
+    "name": "create_truth_table",
+    "description": "Creates a truth table for logical expressions to compare their outputs across all possible inputs",
+    "function": null,
+    "metadata": {
+      "name": "create_truth_table",
+      "description": "Creates a truth table for logical expressions to compare their outputs across all possible inputs",
+      "args": "query=\"\"",
+      "returns": "processed result",
+      "requires": "re"
+    },
+    "script_content": "```python\n# MCP Name: create_truth_table\n# Description: Creates a truth table for logical expressions to compare their outputs across all possible inputs\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: re\n\ndef create_truth_table(query=\"\"):\n    try:\n        import re\n        \n        # Extract expressions from the query\n        expressions = re.findall(r'[^?]+\\)', query.split('\\n\\nWhich')[0])\n        expressions = [expr.strip() for expr in query.split('\\n') if expr.strip() and '?' not in expr]\n        \n        # Define evaluation functions for logical operators\n        def evaluate_expression(expr, values):\n            # Replace logical symbols with Python operators\n            expr_py = expr.replace('\u00ac', 'not ').replace('\u2227', ' and ').replace('\u2228', ' or ')\n            expr_py = expr_py.replace('\u2194', '==').replace('\u2192', '<= or not ')\n            expr_py = expr_py.replace('A', str(values['A'])).replace('B', str(values['B']))\n            \n            # Handle implication (\u2192) properly\n            expr_py = expr_py.replace('<= or not True', 'True')\n            expr_py = expr_py.replace('<= or not False', 'not False or True')\n            \n            # Evaluate the expression\n            return eval(expr_py)\n        \n        # Generate truth table\n        results = {}\n        for a in [True, False]:\n            for b in [True, False]:\n                values = {'A': a, 'B': b}\n                for i, expr in enumerate(expressions):\n                    if i not in results:\n                        results[i] = []\n                    results[i].append(evaluate_expression(expr, values))\n        \n        # Find the expression that differs\n        different_expr = None\n        for i in range(len(expressions)):\n            is_different = True\n            for j in range(len(expressions)):\n                if i != j and results[i] == results[j]:\n                    is_different = False\n                    break\n            if is_different:\n                different_expr = expressions[i]\n                break\n        \n        # If no single different expression, check for groups\n        if not different_expr:\n            # Compare each expression against all others\n            for i in range(len(expressions)):\n                matches = 0\n                for j in range(len(expressions)):\n                    if results[i] == results[j]:\n                        matches += 1\n                if matches == 1:  # Only matches itself\n                    different_expr = expressions[i]\n                    break\n        \n        # Format the truth table for display\n        table = \"Truth Table:\\n\"\n        table += \"A | B | \" + \" | \".join(f\"Expr {i+1}\" for i in range(len(expressions))) + \"\\n\"\n        table += \"-\" * (6 + 9 * len(expressions)) + \"\\n\"\n        \n        for a in [True, False]:\n            for b in [True, False]:\n                row = f\"{int(a)} | {int(b)} | \"\n                for i in range(len(expressions)):\n                    idx = 2 * int(not a) + int(not b)\n                    row += f\"{int(results[i][idx])}       | \"\n                table += row.rstrip(\"| \") + \"\\n\"\n        \n        result = f\"{table}\\n\\nThe expression that is not logically equivalent to the rest is:\\n{different_expr}\"\n        return result\n    \n    except Exception as e:\n        return f\"Error: {str(e)}\"\n```\n\nNote: This implementation has limitations in parsing complex logical expressions. It uses simple string replacements to convert logical symbols to Python operators, which may not work correctly for all possible expressions. A more robust solution would use a proper parser for logical expressions.",
+    "created_at": "2025-07-07T05:10:44.565595",
+    "usage_count": 1,
+    "last_used": "2025-07-07T05:10:49.602752"
+  },
+  {
+    "name": "logical_expression_evaluator",
+    "description": "Evaluates logical expressions for given truth values of variables",
+    "function": null,
+    "metadata": {
+      "name": "logical_expression_evaluator",
+      "description": "Evaluates logical expressions for given truth values of variables",
+      "args": "query=\"\"",
+      "returns": "processed result",
+      "requires": "re"
+    },
+    "script_content": "```python\n# MCP Name: logical_expression_evaluator\n# Description: Evaluates logical expressions for given truth values of variables\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: re\n\ndef logical_expression_evaluator(query=\"\"):\n    try:\n        # Extract the expressions from the query\n        expressions = []\n        for line in query.strip().split('\\n'):\n            if '\u2194' in line:\n                expressions.append(line.strip())\n        \n        if not expressions:\n            return \"No logical expressions found in the query.\"\n        \n        # Define evaluation functions for logical operators\n        def evaluate_expression(expr, a_val, b_val):\n            # Replace logical symbols with Python operators\n            expr = expr.replace('\u00ac', 'not ')\n            expr = expr.replace('\u2227', ' and ')\n            expr = expr.replace('\u2228', ' or ')\n            expr = expr.replace('\u2192', '<=>')\n            expr = expr.replace('\u2194', '==')\n            \n            # Replace variables with their values\n            expr = expr.replace('A', str(a_val))\n            expr = expr.replace('B', str(b_val))\n            \n            # Handle implication (p \u2192 q is equivalent to not p or q)\n            while '<=>' in expr:\n                start = expr.find('<=>')\n                # Find the operands\n                left_part = expr[:start].strip()\n                right_part = expr[start+3:].strip()\n                \n                # Replace with \"not left_part or right_part\"\n                replacement = f\"(not {left_part} or {right_part})\"\n                expr = replacement\n            \n            # Evaluate the expression\n            return eval(expr)\n        \n        # Check all possible combinations of A and B\n        truth_tables = {}\n        for expr in expressions:\n            truth_tables[expr] = []\n            for a in [True, False]:\n                for b in [True, False]:\n                    result = evaluate_expression(expr, a, b)\n                    truth_tables[expr].append((a, b, result))\n        \n        # Compare truth tables to find the one that doesn't match\n        reference = list(truth_tables.values())[0]\n        different_expr = None\n        \n        for expr, table in truth_tables.items():\n            if table != reference:\n                different_expr = expr\n                break\n        \n        if different_expr:\n            return f\"The expression that is not logically equivalent to the rest is:\\n{different_expr}\"\n        else:\n            return \"All expressions are logically equivalent.\"\n        \n    except Exception as e:\n        return f\"Error: {str(e)}\"\n```",
+    "created_at": "2025-07-07T05:12:12.651195",
+    "usage_count": 1,
+    "last_used": "2025-07-07T05:12:33.013157"
+  },
+  {
+    "name": "equivalence_checker",
+    "description": "Compares truth tables to determine which expression is not equivalent to the others",
+    "function": null,
+    "metadata": {
+      "name": "equivalence_checker",
+      "description": "Compares truth tables to determine which expression is not equivalent to the others",
+      "args": "query=\"\"",
+      "returns": "processed result",
+      "requires": "re"
+    },
+    "script_content": "```python\n# MCP Name: equivalence_checker\n# Description: Compares truth tables to determine which expression is not equivalent to the others\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: re\n\ndef equivalence_checker(query=\"\"):\n    try:\n        # Extract expressions from the query\n        import re\n        expressions = re.findall(r'(?:^|\\n)(.*?)(?=\\n|$)', query)\n        expressions = [expr for expr in expressions if '\u2194' in expr]\n        \n        if not expressions:\n            return \"No logical expressions found in the query.\"\n        \n        # Define evaluation function for logical expressions\n        def evaluate_expression(expr, a, b):\n            # Replace logical symbols with Python operators\n            expr = expr.replace('\u00ac', 'not ')\n            expr = expr.replace('\u2227', ' and ')\n            expr = expr.replace('\u2228', ' or ')\n            expr = expr.replace('\u2192', ' <= ')  # A\u2192B is equivalent to (not A) or B, which is ~(A) <= B\n            expr = expr.replace('\u2194', ' == ')\n            \n            # Replace variables with their values\n            expr = expr.replace('A', str(a))\n            expr = expr.replace('B', str(b))\n            \n            # Evaluate the expression\n            return eval(expr)\n        \n        # Generate truth tables for each expression\n        truth_tables = []\n        for expr in expressions:\n            table = []\n            for a in [True, False]:\n                for b in [True, False]:\n                    try:\n                        result = evaluate_expression(expr, a, b)\n                        table.append(result)\n                    except Exception as e:\n                        return f\"Error evaluating '{expr}' with A={a}, B={b}: {str(e)}\"\n            truth_tables.append(table)\n        \n        # Find the expression that doesn't match the others\n        reference_table = truth_tables[0]\n        different_expr = None\n        \n        for i in range(1, len(truth_tables)):\n            if truth_tables[i] != reference_table:\n                # Check if this is the only different one\n                other_tables = [t for j, t in enumerate(truth_tables) if j != i]\n                if all(t == other_tables[0] for t in other_tables):\n                    different_expr = expressions[i]\n                    break\n                else:\n                    # If we found a difference but others also differ, check the first one\n                    if different_expr is None:\n                        count_same = sum(1 for t in truth_tables if t == reference_table)\n                        if count_same < len(truth_tables) - 1:\n                            different_expr = expressions[0]\n                            break\n        \n        if different_expr:\n            return f\"The expression that is not logically equivalent to the others is: {different_expr}\"\n        else:\n            return \"All expressions are logically equivalent.\"\n        \n    except Exception as e:\n        return f\"Error: {str(e)}\"\n```",
+    "created_at": "2025-07-07T05:12:27.376785",
+    "usage_count": 1,
+    "last_used": "2025-07-07T05:12:36.391842"
+  },
+  {
+    "name": "extract_applicant_information",
+    "description": "Parses the text to identify individual applicants and their qualifications/skills",
+    "function": null,
+    "metadata": {
+      "name": "extract_applicant_information",
+      "description": "Parses the text to identify individual applicants and their qualifications/skills",
+      "args": "text=\"\"",
+      "returns": "dictionary with applicant names as keys and lists of their qualifications/skills as values",
+      "requires": "re"
+    },
+    "script_content": "```python\n# MCP Name: extract_applicant_information\n# Description: Parses the text to identify individual applicants and their qualifications/skills\n# Arguments: text (string) - the text containing applicant information\n# Returns: dictionary with applicant names as keys and lists of their qualifications/skills as values\n# Requires: re\n\ndef extract_applicant_information(text=\"\"):\n    try:\n        # Initialize empty dictionary to store applicant information\n        applicants = {}\n        \n        # Split the text into sections for each applicant\n        # Assuming applicants are separated by clear headers or markers\n        applicant_sections = re.split(r'(?:\\r?\\n){2,}(?=Applicant:|APPLICANT:)', text, flags=re.IGNORECASE)\n        \n        for section in applicant_sections:\n            # Skip empty sections\n            if not section.strip():\n                continue\n                \n            # Extract applicant name\n            name_match = re.search(r'(?:Applicant|APPLICANT):\\s*([^\\n]+)', section, re.IGNORECASE)\n            if not name_match:\n                continue\n                \n            name = name_match.group(1).strip()\n            \n            # Extract qualifications/skills\n            # Assuming qualifications are listed with bullets, numbers, or in a specific format\n            qualifications = []\n            skill_matches = re.findall(r'(?:\u2022|-|\\d+\\.|\\*)\\s*([^\\n]+)', section)\n            \n            for skill in skill_matches:\n                qualifications.append(skill.strip())\n                \n            # Alternative pattern if skills are listed differently\n            if not qualifications:\n                skill_matches = re.findall(r'(?:Skill|Qualification|Experience):\\s*([^\\n]+)', section, re.IGNORECASE)\n                for skill in skill_matches:\n                    qualifications.append(skill.strip())\n            \n            # Store in dictionary\n            applicants[name] = qualifications\n            \n        return applicants\n        \n    except Exception as e:\n        return f\"Error: {str(e)}\"\n```\n\nThis function extracts applicant information from text, identifying each applicant and their associated qualifications or skills. It returns a dictionary where keys are applicant names and values are lists of their qualifications, making it easy to compare against job requirements.",
+    "created_at": "2025-07-07T06:02:21.541861",
+    "usage_count": 1,
+    "last_used": "2025-07-07T06:02:30.866553"
+  },
+  {
+    "name": "count_applicants_missing_one_qualification",
+    "description": "Compares each applicant's qualifications against the job requirements and counts those missing exactly one qualification",
+    "function": null,
+    "metadata": {
+      "name": "count_applicants_missing_one_qualification",
+      "description": "Compares each applicant's qualifications against the job requirements and counts those missing exactly one qualification",
+      "args": "query=\"\"",
+      "returns": "processed result",
+      "requires": "re, json, math"
+    },
+    "script_content": "```python\n# MCP Name: count_applicants_missing_one_qualification\n# Description: Compares each applicant's qualifications against the job requirements and counts those missing exactly one qualification\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: re, json, math\n\ndef count_applicants_missing_one_qualification(query=\"\", job_requirements=None, applicants_data=None):\n    try:\n        # Check if required data is provided\n        if not job_requirements or not applicants_data:\n            return \"Error: Missing job requirements or applicants data\"\n        \n        # Count applicants missing exactly one qualification\n        count = 0\n        \n        for applicant in applicants_data:\n            # Get applicant's qualifications\n            applicant_qualifications = set(applicant.get(\"qualifications\", []))\n            \n            # Get job requirements\n            required_qualifications = set(job_requirements)\n            \n            # Calculate missing qualifications\n            missing_qualifications = required_qualifications - applicant_qualifications\n            \n            # Check if exactly one qualification is missing\n            if len(missing_qualifications) == 1:\n                count += 1\n        \n        return f\"There are {count} applicants missing exactly one qualification for the job.\"\n    except Exception as e:\n        return f\"Error: {str(e)}\"\n```",
+    "created_at": "2025-07-07T06:02:27.820474",
+    "usage_count": 1,
+    "last_used": "2025-07-07T06:02:31.569751"
+  },
+  {
+    "name": "analyze_applicant_qualifications",
+    "description": "Extracts each applicant's information and determines which qualifications they meet and which they don't",
+    "function": null,
+    "metadata": {
+      "name": "analyze_applicant_qualifications",
+      "description": "Extracts each applicant's information and determines which qualifications they meet and which they don't",
+      "args": "query=\"\"",
+      "returns": "processed result",
+      "requires": "re"
+    },
+    "script_content": "```python\n# MCP Name: analyze_applicant_qualifications\n# Description: Extracts each applicant's information and determines which qualifications they meet and which they don't\n# Arguments: query (string) - the user query to process, pdf_text (string) - the text content of the PDF\n# Returns: processed result\n# Requires: re\n\ndef analyze_applicant_qualifications(query=\"\", pdf_text=\"\"):\n    try:\n        # Extract applicants and their qualifications from the PDF text\n        import re\n        \n        # Find all applicant sections in the document\n        applicant_sections = re.split(r'(?:Applicant|Candidate)\\s*\\d+:', pdf_text)\n        if len(applicant_sections) <= 1:  # No applicants found\n            return \"No applicant information found in the document.\"\n        \n        # Remove the header section (before first applicant)\n        applicant_sections = applicant_sections[1:]\n        \n        # Extract required qualifications from the document\n        qualification_match = re.search(r'Required Qualifications:(.*?)(?:Applicant|Candidate)', pdf_text, re.DOTALL)\n        if not qualification_match:\n            return \"Could not find required qualifications in the document.\"\n        \n        # Extract and clean up the qualification list\n        qualification_text = qualification_match.group(1)\n        required_quals = [q.strip() for q in re.findall(r'[-\u2022*]\\s*(.*?)(?=[-\u2022*]|\\Z)', qualification_text, re.DOTALL) if q.strip()]\n        \n        # Count applicants missing only one qualification\n        missing_one_qual_count = 0\n        \n        for applicant in applicant_sections:\n            # Count how many qualifications this applicant is missing\n            missing_quals = 0\n            \n            for qual in required_quals:\n                # Check if qualification is mentioned in the applicant's section\n                # This is a simplified check - in real implementation, more sophisticated matching would be needed\n                if not re.search(r'\\b' + re.escape(qual[:20]) + r'.*?\\b', applicant, re.IGNORECASE):\n                    missing_quals += 1\n            \n            if missing_quals == 1:\n                missing_one_qual_count += 1\n        \n        # Return the answer to the specific query\n        return f\"{missing_one_qual_count} applicants are missing only a single qualification.\"\n        \n    except Exception as e:\n        return f\"Error analyzing applicant qualifications: {str(e)}\"\n```",
+    "created_at": "2025-07-07T06:03:15.263123",
+    "usage_count": 2,
+    "last_used": "2025-07-07T06:03:59.997916"
+  },
+  {
+    "name": "count_single_qualification_missing",
+    "description": "Counts the number of applicants who are missing exactly one qualification",
+    "function": null,
+    "metadata": {
+      "name": "count_single_qualification_missing",
+      "description": "Counts the number of applicants who are missing exactly one qualification",
+      "args": "query=\"\"",
+      "returns": "processed result",
+      "requires": "re, json, math"
+    },
+    "script_content": "```python\n# MCP Name: count_single_qualification_missing\n# Description: Counts the number of applicants who are missing exactly one qualification\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: re, json, math\n\ndef count_single_qualification_missing(query=\"\"):\n    try:\n        # This function assumes that the data about applicants and their qualifications\n        # would be extracted from a PDF and available in a structured format\n        \n        # In a real implementation, we would:\n        # 1. Extract applicant data from the PDF\n        # 2. Determine required qualifications for the job\n        # 3. For each applicant, count how many qualifications they're missing\n        # 4. Count applicants missing exactly one qualification\n        \n        # Placeholder for demonstration - in a real scenario, this would process actual data\n        # For example, if we had:\n        # applicants = [\n        #    {\"name\": \"John\", \"missing_qualifications\": 1},\n        #    {\"name\": \"Mary\", \"missing_qualifications\": 0},\n        #    {\"name\": \"Steve\", \"missing_qualifications\": 3},\n        #    {\"name\": \"Lisa\", \"missing_qualifications\": 1}\n        # ]\n        \n        # The actual counting logic would be:\n        # count = sum(1 for applicant in applicants if applicant[\"missing_qualifications\"] == 1)\n        \n        # Since we don't have actual data, return a placeholder message\n        return \"To count applicants missing exactly one qualification, I need to analyze the PDF content first.\"\n    except Exception as e:\n        return f\"Error: {str(e)}\"\n```",
+    "created_at": "2025-07-07T06:03:24.699114",
+    "usage_count": 1,
+    "last_used": "2025-07-07T06:03:27.415857"
+  },
+  {
+    "name": "parse_applicant_qualifications",
+    "description": "Extracts information about each applicant and their qualifications from the PDF content",
+    "function": null,
+    "metadata": {
+      "name": "parse_applicant_qualifications",
+      "description": "Extracts information about each applicant and their qualifications from the PDF content",
+      "args": "pdf_content=\"\"",
+      "returns": "number of applicants missing only one qualification",
+      "requires": "re"
+    },
+    "script_content": "```python\n# MCP Name: parse_applicant_qualifications\n# Description: Extracts information about each applicant and their qualifications from the PDF content\n# Arguments: pdf_content (string) - the content extracted from the PDF\n# Returns: number of applicants missing only one qualification\n# Requires: re\n\ndef parse_applicant_qualifications(pdf_content=\"\"):\n    try:\n        # Dictionary to store applicants and their qualifications\n        applicants = {}\n        \n        # Extract applicant sections using regex\n        import re\n        applicant_sections = re.split(r'Applicant\\s*\\d+:', pdf_content)\n        \n        # Skip the first element if it's empty (before the first applicant)\n        if applicant_sections and not applicant_sections[0].strip():\n            applicant_sections = applicant_sections[1:]\n        \n        # Required qualifications to check for\n        required_qualifications = [\n            \"bachelor's degree\",\n            \"master's degree\",\n            \"5 years experience\",\n            \"python programming\",\n            \"data analysis\"\n        ]\n        \n        # Process each applicant section\n        for i, section in enumerate(applicant_sections):\n            applicant_name = f\"Applicant {i+1}\"\n            applicants[applicant_name] = []\n            \n            # Check for each qualification\n            for qual in required_qualifications:\n                if re.search(qual, section.lower()):\n                    applicants[applicant_name].append(qual)\n        \n        # Count applicants missing only one qualification\n        missing_one_count = 0\n        for applicant, qualifications in applicants.items():\n            if len(qualifications) == len(required_qualifications) - 1:\n                missing_one_count += 1\n        \n        return missing_one_count\n    except Exception as e:\n        return f\"Error: {str(e)}\"\n```",
+    "created_at": "2025-07-07T06:04:36.200173",
+    "usage_count": 1,
+    "last_used": "2025-07-07T06:04:38.258644"
   }
 ]

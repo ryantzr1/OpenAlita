@@ -96,7 +96,7 @@ def main():
     correct_answers = 0  # Track correct answers for real-time accuracy
     
     try:
-        for result in agent.run_gaia_benchmark(args.jsonl_file, args.max_questions, args.verbose):
+        for result in agent.run_gaia_benchmark(args.jsonl_file, args.max_questions, args.verbose, skip_tasks=existing_tasks):
             if "error" in result:
                 print(f"❌ Error: {result['error']}")
                 sys.exit(1)
@@ -125,12 +125,11 @@ def main():
             else:
                 # Individual question result
                 task_id = result['task_id']
+                print(f"\n Task ID: {task_id}")
                 
                 # Skip if already processed and resuming
-                if args.resume and task_id in existing_tasks:
+                if result.get('skipped', False):
                     skipped_count += 1
-                    if args.verbose:
-                        print(f"⏭️  Skipping {task_id} (already answered)")
                     continue
                 
                 # Write to submission file immediately if specified
@@ -183,6 +182,18 @@ def main():
         if args.submission:
             print(f"📝 Partial submission file saved to: {args.submission}")
         sys.exit(1)
+
+    # Final global stats (for all processed)
+    total_correct = sum(1 for r in results if r.get("is_correct"))
+    total_questions = len(results)
+    global_accuracy = (total_correct / total_questions) * 100 if total_questions > 0 else 0
+
+    print("\n" + "=" * 50)
+    print(f"🌐 Global Stats (for all processed):")
+    print(f"   Total Questions: {total_questions}")
+    print(f"   Total Correct Answers: {total_correct}")
+    print(f"   Global Accuracy: {global_accuracy:.2f}%")
+    print("=" * 50)
 
     # Note: No need to write submission file at the end since we're writing incrementally
     if args.submission:
