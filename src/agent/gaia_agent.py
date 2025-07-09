@@ -437,7 +437,7 @@ Provide ONLY the final answer (no explanation, no quotes, just the answer):"""
             logger.error(f"Error loading GAIA questions from {jsonl_file_path}: {e}")
             return []
     
-    def run_gaia_benchmark(self, jsonl_file_path: str, max_questions: Optional[int] = None, verbose: bool = False) -> Generator[Dict[str, Any], None, None]:
+    def run_gaia_benchmark(self, jsonl_file_path: str, max_questions: Optional[int] = None, verbose: bool = False, existing_tasks: Optional[set] = None, resume: bool = False, correct_answers: int=0) -> Generator[Dict[str, Any], None, None]:
         """Run GAIA benchmark on questions from JSONL file"""
         logger.info(f"Starting GAIA benchmark with file: {jsonl_file_path}")
         
@@ -450,9 +450,16 @@ Provide ONLY the final answer (no explanation, no quotes, just the answer):"""
             questions = questions[:max_questions]
         
         total_questions = len(questions)
-        correct_answers = 0
+        skipped_count = 0  # 添加跳过计数
         
         for i, question in enumerate(questions, 1):
+            # 在处理问题前检查是否需要跳过
+            if resume and existing_tasks and question.task_id in existing_tasks:
+                skipped_count += 1
+                if verbose:
+                    logger.info(f"Skipping question {i}/{total_questions}: {question.task_id} (already answered)")
+                continue
+                
             logger.info(f"Processing question {i}/{total_questions}: {question.task_id}")
             
             # Process the question
@@ -500,7 +507,7 @@ Provide ONLY the final answer (no explanation, no quotes, just the answer):"""
             yield result
             
             # Progress update
-            accuracy = (correct_answers / i) * 100
+            accuracy = (correct_answers / (i )) * 100 if (i) > 0 else 0
             logger.info(f"Progress: {i}/{total_questions}, Accuracy: {accuracy:.2f}%")
         
         # Final summary
@@ -510,6 +517,7 @@ Provide ONLY the final answer (no explanation, no quotes, just the answer):"""
                 "total_questions": total_questions,
                 "correct_answers": correct_answers,
                 "accuracy": final_accuracy,
+                "skipped_questions": skipped_count,  
                 "benchmark_complete": True
             }
         }
