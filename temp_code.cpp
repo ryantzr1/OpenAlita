@@ -12221,7 +12221,7 @@ Transclusion expansion time report (%,ms,calls,template)
 </body>
 </html><!--
      FILE ARCHIVED ON 11:28:31 Jun 09, 2023 AND RETRIEVED FROM THE
-     INTERNET ARCHIVE ON 22:02:16 Jul 05, 2025.
+     INTERNET ARCHIVE ON 10:19:15 Jul 08, 2025.
      JAVASCRIPT APPENDED BY WAYBACK MACHINE, COPYRIGHT INTERNET ARCHIVE.
 
      ALL OTHER CONTENT MAY ALSO BE PROTECTED BY COPYRIGHT (17 U.S.C.
@@ -12229,13 +12229,13 @@ Transclusion expansion time report (%,ms,calls,template)
 -->
 <!--
 playback timings (ms):
-  captures_list: 0.737
-  exclusion.robots: 0.035
-  exclusion.robots.policy: 0.019
-  esindex: 0.014
-  cdx.remote: 5.695
-  LoadShardBlock: 279.968 (3)
-  PetaboxLoader3.datanode: 269.219 (4)
-  load_resource: 266.58
-  PetaboxLoader3.resolve: 223.997
+  captures_list: 0.687
+  exclusion.robots: 0.036
+  exclusion.robots.policy: 0.024
+  esindex: 0.013
+  cdx.remote: 19.013
+  LoadShardBlock: 142.955 (3)
+  PetaboxLoader3.datanode: 85.576 (4)
+  load_resource: 564.691
+  PetaboxLoader3.resolve: 530.527
 -->
