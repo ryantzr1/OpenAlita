@@ -183,18 +183,6 @@ def main():
             print(f"📝 Partial submission file saved to: {args.submission}")
         sys.exit(1)
 
-    # Final global stats (for all processed)
-    total_correct = sum(1 for r in results if r.get("is_correct"))
-    total_questions = len(results)
-    global_accuracy = (total_correct / total_questions) * 100 if total_questions > 0 else 0
-
-    print("\n" + "=" * 50)
-    print(f"🌐 Global Stats (for all processed):")
-    print(f"   Total Questions: {total_questions}")
-    print(f"   Total Correct Answers: {total_correct}")
-    print(f"   Global Accuracy: {global_accuracy:.2f}%")
-    print("=" * 50)
-
     # Note: No need to write submission file at the end since we're writing incrementally
     if args.submission:
         print(f"📝 All answers saved incrementally to: {args.submission}")
