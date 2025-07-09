@@ -53,7 +53,8 @@ class GAIAAgent:
         self.web_agent = WebAgent()
         self.mcp_factory = MCPFactory()
         self.langgraph_coordinator = LangGraphCoordinator()
-        self.gaia_files_dir = "gaia_files"
+        # self.gaia_files_dir = "gaia_files"
+        self.gaia_files_dir = "/root/OpenAlita/gaia_dataset/2023/validation"
         logger.info("GAIA Agent initialized successfully")
     
     def _load_file_content(self, file_name: str) -> Optional[str]:

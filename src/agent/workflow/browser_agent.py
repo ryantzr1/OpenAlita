@@ -93,11 +93,12 @@ def browser_agent_node(state: State) -> Command[Literal["evaluator", "web_agent"
             # Use GPT-4 with optimized settings for browser automation
             chat_model = ChatOpenAI(
                 model="gpt-4o",
+                base_url="https://oneapi.deepwisdom.ai/v1",
                 api_key=openai_api_key,
                 temperature=0,  # Low temperature for consistent actions
             )
             
-            planner_llm = ChatOpenAI(model='gpt-4o-mini', api_key=openai_api_key)
+            planner_llm = ChatOpenAI(model='gpt-4o-mini', base_url="https://oneapi.deepwisdom.ai/v1", api_key=openai_api_key)
             
             chunks.append("🤖 **Using GPT-4**\n")
 

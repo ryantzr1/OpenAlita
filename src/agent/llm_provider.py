@@ -5,6 +5,16 @@ import requests
 import base64
 from dotenv import load_dotenv
 
+# Configure logging: write to both console and log file
+logging.basicConfig(
+    level=logging.INFO,  # 可选调节: DEBUG / INFO / WARNING / ERROR / CRITICAL
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    handlers=[
+        logging.FileHandler("llm_provider.log", mode='a', encoding='utf-8'),
+        logging.StreamHandler()
+    ]
+)
+
 class LLMProvider:
     """Placeholder for interacting with an LLM API like DeepSeek."""
     
