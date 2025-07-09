@@ -7,6 +7,7 @@ Simple command-line interface for running GAIA benchmark tests.
 
 import sys
 import os
+os.environ["BROWSER_USE_CHROMIUM_SANDBOX"] = "false"
 import argparse
 import json
 import time
@@ -95,7 +96,7 @@ def main():
     correct_answers = 0  # Track correct answers for real-time accuracy
     
     try:
-        for result in agent.run_gaia_benchmark(args.jsonl_file, args.max_questions, args.verbose):
+        for result in agent.run_gaia_benchmark(args.jsonl_file, args.max_questions, args.verbose, skip_tasks=existing_tasks):
             if "error" in result:
                 print(f"❌ Error: {result['error']}")
                 sys.exit(1)
@@ -124,12 +125,11 @@ def main():
             else:
                 # Individual question result
                 task_id = result['task_id']
+                print(f"\n Task ID: {task_id}")
                 
                 # Skip if already processed and resuming
-                if args.resume and task_id in existing_tasks:
+                if result.get('skipped', False):
                     skipped_count += 1
-                    if args.verbose:
-                        print(f"⏭️  Skipping {task_id} (already answered)")
                     continue
                 
                 # Write to submission file immediately if specified
@@ -165,7 +165,9 @@ def main():
                     print(f"\n{status} Question {processed_count} completed | Accuracy: {current_accuracy:.1f}% ({correct_answers}/{processed_count})")
                     print(f"   Question: {result['question'][:100]}...")
                     print(f"   Level: {result['level']}")
-                    print(f"   Full Response: {result['full_response'][:500]}...")
+                    print(f"   Expected Answer: {result['expected_answer']}")
+                    print(f"   Actual Answer: {result['actual_answer']}")
+                    # print(f"   Full Response: {result['full_response'][:500]}...")
                     print()
     
     except KeyboardInterrupt:
