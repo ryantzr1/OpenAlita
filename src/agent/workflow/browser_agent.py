@@ -15,6 +15,7 @@ from browser_use.llm.openai.chat import ChatOpenAI
 from browser_use import Agent
 
 from .state import State
+from .context_utils import limit_browser_results
 
 logger = logging.getLogger('alita.langgraph')
 
@@ -214,14 +215,17 @@ def browser_agent_node(state: State) -> Command[Literal["evaluator", "web_agent"
                     logger.warning(f"Error accessing browser-use result API: {api_error}")
                     browser_results.append(f"Result extraction completed with API access issues")
                 
+                # Apply browser results limit to prevent context overflow
+                browser_results = limit_browser_results(browser_results, max_results=2)
+                
                 # Ensure total results don't get too large
                 if len(str(browser_results)) > 10000:  # 10KB limit
-                    browser_results = browser_results[:4]  # Keep only first 4 results
+                    browser_results = browser_results[:2]  # Keep only first 2 results
                     browser_results.append("Result: Browser automation completed (truncated for size)")
                 
                 return Command(
                     update={
-                        "mcp_execution_results": browser_results,
+                        "browser_results": browser_results,
                         "streaming_chunks": chunks
                     },
                     goto="evaluator"
@@ -249,7 +253,7 @@ def browser_agent_node(state: State) -> Command[Literal["evaluator", "web_agent"
                 
                 return Command(
                     update={
-                        "mcp_execution_results": [f"Browser automation failed: {str(browser_error)} - fallback to web search"],
+                        "browser_results": limit_browser_results([f"Browser automation failed: {str(browser_error)} - fallback to web search"]),
                         "streaming_chunks": chunks
                     },
                     goto="web_agent"
@@ -257,7 +261,7 @@ def browser_agent_node(state: State) -> Command[Literal["evaluator", "web_agent"
             else:
                 return Command(
                     update={
-                        "mcp_execution_results": [f"Browser automation failed: {str(browser_error)}"],
+                        "browser_results": limit_browser_results([f"Browser automation failed: {str(browser_error)}"]),
                         "streaming_chunks": chunks
                     },
                     goto="evaluator"
@@ -269,7 +273,7 @@ def browser_agent_node(state: State) -> Command[Literal["evaluator", "web_agent"
         
         return Command(
             update={
-                "mcp_execution_results": [f"Browser agent failed: {str(e)}"],
+                "browser_results": limit_browser_results([f"Browser agent failed: {str(e)}"]),
                 "streaming_chunks": chunks
             },
             goto="evaluator"

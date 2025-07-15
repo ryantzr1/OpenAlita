@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Generator, Union, Optional, Tuple
 
 from .llm_provider import LLMProvider
 from .mcp_factory import MCPFactory
-from .web_agent import WebAgent
+from .web_agent import WebSearchAgent
 from .langgraph_workflow import LangGraphCoordinator
 
 # Configure logging
@@ -20,7 +20,7 @@ class AlitaAgent:
         logger.info("Initializing AlitaAgent components")
         self.llm_provider = LLMProvider()
         self.mcp_factory = MCPFactory()
-        self.web_agent = WebAgent()
+        self.web_agent = WebSearchAgent()
         
         # Initialize the LangGraph coordinator
         self.langgraph_coordinator = LangGraphCoordinator()

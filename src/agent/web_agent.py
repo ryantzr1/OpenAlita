@@ -7,8 +7,8 @@ from urllib.parse import quote_plus, urljoin, urlparse
 import time
 from .llm_provider import LLMProvider
 
-class WebAgent:
-    """Web agent for handling search queries and content extraction."""
+class WebSearchAgent:
+    """Web search agent for handling search queries and content extraction."""
     
     def __init__(self):
         self.firecrawl_api_key = os.getenv('FIRECRAWL_API_KEY')

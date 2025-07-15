@@ -20,6 +20,9 @@ WEB SEARCH RESULTS SUMMARY:
 MCP TOOL RESULTS SUMMARY:
 {mcp_results_summary}
 
+BROWSER AUTOMATION RESULTS SUMMARY:
+{browser_results_summary}
+
 AVAILABLE ACTIONS:
 1. "browser_automation" - Use browser-use for visual/interactive tasks
 2. "web_search" - Search for additional information (with targeted follow-up searches)

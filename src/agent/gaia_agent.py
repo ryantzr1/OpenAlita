@@ -25,7 +25,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from .llm_provider import LLMProvider
-from .web_agent import WebAgent
+from .web_agent import WebSearchAgent
 from .mcp_factory import MCPFactory
 from .langgraph_workflow import LangGraphCoordinator
 
@@ -50,7 +50,7 @@ class GAIAAgent:
     def __init__(self, gaia_files_dir: str = "GAIA/2023/validation"):
         logger.info("Initializing GAIA Agent")
         self.llm_provider = LLMProvider()
-        self.web_agent = WebAgent()
+        self.web_agent = WebSearchAgent()
         self.mcp_factory = MCPFactory()
         self.langgraph_coordinator = LangGraphCoordinator()
         self.gaia_files_dir = gaia_files_dir

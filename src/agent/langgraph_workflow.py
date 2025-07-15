@@ -44,10 +44,26 @@ def _build_workflow():
         "evaluator": "evaluator",
         "web_agent": "web_agent"
     })
-    workflow.add_conditional_edges("evaluator", lambda state: "synthesizer" if state.get("answer_completeness", 0) >= 0.7 else "coordinator")
+    # Use evaluator's decision instead of simple threshold
+    workflow.add_conditional_edges("evaluator", _evaluator_router, {
+        "synthesizer": "synthesizer",
+        "coordinator": "coordinator"
+    })
     workflow.add_edge("synthesizer", END)
     
     return workflow.compile(checkpointer=MemorySaver())
+
+
+def _evaluator_router(state):
+    """Router for evaluator decisions based on evaluation details"""
+    evaluation_details = state.get("evaluation_details", {})
+    has_sufficient_info = evaluation_details.get("has_sufficient_info", False)
+    
+    # If evaluator says we have sufficient info, go to synthesizer
+    if has_sufficient_info:
+        return "synthesizer"
+    else:
+        return "coordinator"
 
 
 class LangGraphCoordinator:

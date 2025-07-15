@@ -16,7 +16,7 @@ from .mcp_agent_prompts import (
     BROWSER_MCP_ANALYSIS_PROMPT,
     BROWSER_TOOL_SCRIPT_PROMPT
 )
-from .evaluator_prompts import EVALUATOR_ANALYSIS_PROMPT
+from .evaluator_prompts import COMPREHENSIVE_EVALUATION_PROMPT
 from .synthesizer_prompts import SYNTHESIS_PROMPT
 
 __all__ = [
@@ -35,7 +35,7 @@ __all__ = [
     'BROWSER_TOOL_SCRIPT_PROMPT',
     
     # Evaluator prompts
-    'EVALUATOR_ANALYSIS_PROMPT',
+    'COMPREHENSIVE_EVALUATION_PROMPT',
     
     # Synthesizer prompts
     'SYNTHESIS_PROMPT',

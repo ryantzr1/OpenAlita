@@ -23,12 +23,11 @@ class State(MessagesState):
     web_search_results: List[Dict[str, Any]] = []
     mcp_tools_created: List[Dict[str, Any]] = []
     mcp_execution_results: List[str] = []
+    browser_results: List[str] = []
     
     # Evaluation and synthesis
     answer_completeness: float = 0.0
-    evaluator_confidence: float = 0.0  # Confidence from evaluator node
     final_answer: str = ""
-    confidence_score: float = 0.0  # Final confidence from synthesizer only
     
     # Streaming - properly annotated for multiple values
     streaming_chunks: Annotated[List[str], add] = [] 
