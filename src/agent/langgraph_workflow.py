@@ -58,6 +58,11 @@ def _evaluator_router(state):
     """Router for evaluator decisions based on evaluation details"""
     evaluation_details = state.get("evaluation_details", {})
     has_sufficient_info = evaluation_details.get("has_sufficient_info", False)
+    final_answer = state.get("final_answer", "")
+    
+    if final_answer and final_answer.strip():
+        logger.info(f"Final answer detected in evaluator router: {final_answer[:100]}...")
+        return "synthesizer"
     
     # If evaluator says we have sufficient info, go to synthesizer
     if has_sufficient_info:

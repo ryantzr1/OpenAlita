@@ -6,6 +6,7 @@ Handles final answer generation.
 
 import logging
 from typing import Dict, Any, List
+from langgraph.types import Command
 from ..llm_provider import LLMProvider
 from ..prompts import SYNTHESIS_PROMPT
 from .context_utils import apply_context_management, summarize_web_results, summarize_mcp_results
@@ -83,15 +84,21 @@ Please analyze the image and provide your answer in the exact format requested b
         
         final_answer = "".join(response_chunks)
         
-        return {
-            "final_answer": final_answer,
-            "streaming_chunks": chunks
-        }
+        logger.info(f"Synthesizer created final answer: {final_answer[:100]}...")
+        
+        return Command(
+            update={
+                "final_answer": final_answer,
+                "streaming_chunks": chunks
+            }
+        )
         
     except Exception as e:
         logger.error(f"Synthesis error: {e}")
         
-        return {
-            "final_answer": f"Error generating response: {str(e)}",
-            "streaming_chunks": [f"❌ **Synthesis error:** {str(e)}\n"]
-        } 
+        return Command(
+            update={
+                "final_answer": f"Error generating response: {str(e)}",
+                "streaming_chunks": [f"❌ **Synthesis error:** {str(e)}\n"]
+            }
+        ) 
