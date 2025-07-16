@@ -29,6 +29,17 @@ AVAILABLE ACTIONS:
 3. "create_tools" - Create and execute custom tools/functions for calculations, data processing  
 4. "synthesize" - Combine all available information into a final answer
 
+EXPLORATION STRATEGY:
+- If previous attempts have low completeness (< 30%), consider switching approaches
+- For historical documents, government archives, or complex databases, browser automation may be more effective
+- For current events, news, or simple facts, web search is usually sufficient
+- For calculations, data processing, or system operations, tool creation is best
+- Don't get stuck in the same approach - explore different strategies when progress is low
+- **CRITICAL**: If multiple browser automation attempts haven't solved the problem, try web search
+- **CRITICAL**: If multiple web search attempts haven't solved the problem, try browser automation
+- **CRITICAL**: If alternating between browser and web search without progress, try tool creation
+- Consider the action history when making decisions - avoid repeating failed strategies
+
 VISION ANALYSIS CAPABILITIES:
 All agents can handle vision tasks using Claude 3.5 Sonnet's built-in vision capabilities:
 - **MCP Agent**: Can create vision analysis tools, OCR tools, mathematical analysis tools
@@ -49,14 +60,21 @@ Use browser-use for these scenarios:
 - **File Operations**: Downloading, uploading, file management on web
 - **Multi-step Workflows**: Job applications, form filling, multi-page processes
 - **Visual Tasks**: Screenshot analysis, visual verification, image-based interactions
+- **Government Archives**: Historical documents, government databases, regulatory archives
+- **Historical Research**: Old standards, regulations, documents from specific time periods
+- **Database Navigation**: Complex government websites, archive systems, document repositories
+- **PDF/Document Access**: When documents are embedded in web pages or require navigation
+- **Multi-step Information Gathering**: When information requires visiting multiple pages or following links
 
 WEB SEARCH CRITERIA:
 - Simple information queries (what is, how to, facts, news)
 - Static content websites
 - Documentation and reference materials
-- Historical data and research
+- Current/recent historical data and research
 - Non-interactive content
 - Image-related searches (find similar images, image analysis tools)
+- **AVOID for**: Very specific historical documents, government archives, complex regulatory databases
+- **GOOD FOR**: When browser automation has failed multiple times - web search can find alternative sources
 
 TOOL CREATION CRITERIA:
 - **Mathematical calculations** and data processing
@@ -68,6 +86,7 @@ TOOL CREATION CRITERIA:
 - **Text processing and analysis**
 - **Vision analysis tools** (OCR, image processing, mathematical content extraction)
 - **Image-based calculations** (fraction analysis, diagram interpretation)
+- **Fallback option** when both browser and web search have failed
 
 SYNTHESIS CRITERIA:
 - We have comprehensive, high-quality information
@@ -83,10 +102,16 @@ For image-based tasks, consider:
 - **Browser Agent**: If the task requires visual interaction or dynamic content
 - **Synthesizer**: If the task is straightforward image analysis for final answer
 
+STRATEGY SWITCHING GUIDELINES:
+- **Browser → Web Search**: When browser automation has been tried 2+ times with low completeness
+- **Web Search → Browser**: When web search has been tried 2+ times with low completeness  
+- **Browser/Web → Tools**: When alternating between browser and web search without progress
+- **Any → Synthesize**: When we have sufficient information or max iterations reached
+
 Respond with a JSON object containing:
 {{
     "next_action": "browser_automation" | "web_search" | "create_tools" | "synthesize",
-    "reasoning": "detailed explanation considering all agents' capabilities including vision",
+    "reasoning": "detailed explanation considering all agents' capabilities including vision and exploration strategy",
     "confidence": 0.0-1.0,
     "missing_info": "specific information gaps identified",
     "search_strategy": "if web_search: 'targeted'|'broader'|'verification'",
@@ -98,4 +123,4 @@ Respond with a JSON object containing:
     "vision_analysis_needed": true/false
 }}
 
-Choose the most appropriate agent based on the specific requirements of the task, not just the presence of images.""" 
+Choose the most appropriate agent based on the specific requirements of the task, considering exploration strategy and previous results.""" 

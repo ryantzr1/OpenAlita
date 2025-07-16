@@ -51,6 +51,11 @@ def coordinator_node(state: State) -> Command[Literal["web_agent", "mcp_agent", 
     previous_analysis = state.get("coordinator_analysis", {})
     evaluation_details = state.get("evaluation_details", {})
     
+    # Track action history for better exploration decisions
+    action_history = state.get("action_history", [])
+    if previous_analysis and previous_analysis.get("next_action"):
+        action_history.append(previous_analysis.get("next_action"))
+    
     # Analyze quality and gaps in existing information
     information_analysis = _build_information_analysis(web_results, mcp_results, browser_results)
     
@@ -70,9 +75,24 @@ EVALUATION FEEDBACK:
 - Missing aspects: {', '.join(missing_aspects[:3]) if missing_aspects else 'None identified'}
 """
     
+    # Enhanced action history analysis
+    browser_attempts = action_history.count("browser_automation")
+    web_attempts = action_history.count("web_search")
+    tool_attempts = action_history.count("create_tools")
+    
+    action_history_summary = f"""
+ACTION HISTORY ANALYSIS:
+- Browser automation attempts: {browser_attempts}
+- Web search attempts: {web_attempts}
+- Tool creation attempts: {tool_attempts}
+- Total iterations: {len(action_history)}
+"""
+    
     context_summary = f"""
 Current iteration: {iteration + 1}/{max_iterations}
 Previous actions: {previous_analysis.get('next_action', 'None')}
+
+{action_history_summary}
 
 INFORMATION QUALITY ANALYSIS:
 {information_analysis}
@@ -121,23 +141,61 @@ SEARCH RESULTS SUMMARY:
         missing_info = analysis.get("missing_info", "")
         browser_capabilities = analysis.get("browser_capabilities_needed", [])
         
-        # Consider evaluation feedback when making decisions
+        # Enhanced exploration logic with action history tracking
         if evaluation_details:
             prev_action = evaluation_details.get("previous_action", "")
             prev_action_success = evaluation_details.get("previous_action_success", True)
+            completeness = evaluation_details.get("completeness_score", 0.0)
             
-            # If previous action failed, try a different approach
-            if not prev_action_success and prev_action == next_action:
-                logger.info(f"Previous action {prev_action} failed, trying alternative approach")
-                if prev_action == "web_search":
-                    next_action = "browser_automation"
-                    reasoning += " (Previous web search failed, trying browser automation)"
-                elif prev_action == "browser_automation":
-                    next_action = "web_search"
-                    reasoning += " (Previous browser automation failed, trying web search)"
-                elif prev_action == "create_tools":
-                    next_action = "web_search"
-                    reasoning += " (Previous tool creation failed, trying web search)"
+            # Smart exploration logic - analyze patterns and switch strategies
+            should_explore_different_approach = False
+            exploration_reason = ""
+            
+            # Case 1: Previous action explicitly failed
+            if not prev_action_success:
+                should_explore_different_approach = True
+                exploration_reason = f"Previous action {prev_action} failed"
+            
+            # Case 2: Low progress after multiple attempts
+            elif completeness < 0.3 and iteration >= 2:
+                should_explore_different_approach = True
+                exploration_reason = f"Low progress ({completeness:.1%}) after {iteration} attempts"
+            
+            # Case 3: Same action being repeated without improvement
+            elif prev_action == next_action and iteration >= 2:
+                should_explore_different_approach = True
+                exploration_reason = f"Repeating {prev_action} without improvement"
+            
+            # NEW: Case 4: Multiple browser attempts without success
+            elif browser_attempts >= 2 and completeness < 0.5:
+                should_explore_different_approach = True
+                exploration_reason = f"Multiple browser attempts ({browser_attempts}) with low completeness ({completeness:.1%}), trying web search"
+                next_action = "web_search"
+            
+            # NEW: Case 5: Multiple web search attempts without success
+            elif web_attempts >= 2 and completeness < 0.5:
+                should_explore_different_approach = True
+                exploration_reason = f"Multiple web search attempts ({web_attempts}) with low completeness ({completeness:.1%}), trying browser automation"
+                next_action = "browser_automation"
+            
+            # NEW: Case 6: Alternating between approaches without progress
+            elif len(action_history) >= 4 and completeness < 0.4:
+                # Check if we've been alternating between browser and web search
+                recent_actions = action_history[-4:]
+                browser_web_alternating = (
+                    len(recent_actions) >= 4 and
+                    any(recent_actions[i] == "browser_automation" and recent_actions[i+1] == "web_search" 
+                        for i in range(len(recent_actions)-1))
+                )
+                if browser_web_alternating:
+                    should_explore_different_approach = True
+                    exploration_reason = f"Alternating between browser and web search without progress, trying tool creation"
+                    next_action = "create_tools"
+            
+            # Apply exploration if needed
+            if should_explore_different_approach:
+                logger.info(f"Exploring different approach: {exploration_reason}")
+                reasoning += f" ({exploration_reason})"
         
         # Map action to goto
         action_map = {
@@ -149,7 +207,7 @@ SEARCH RESULTS SUMMARY:
         goto = action_map.get(next_action, "synthesizer")
         
         # Enhanced logging with strategy info
-        chunks = _build_coordinator_chunks(image_files, next_action, reasoning, search_strategy, missing_info, browser_capabilities, goto, evaluation_details)
+        chunks = _build_coordinator_chunks(image_files, next_action, reasoning, search_strategy, missing_info, browser_capabilities, goto, evaluation_details, action_history)
         
         # Store enhanced analysis for use by other agents
         enhanced_analysis = analysis.copy()
@@ -158,13 +216,15 @@ SEARCH RESULTS SUMMARY:
             "missing_info": missing_info,
             "browser_capabilities_needed": browser_capabilities,
             "iteration": iteration + 1,
-            "considered_evaluation_feedback": bool(evaluation_details)
+            "considered_evaluation_feedback": bool(evaluation_details),
+            "action_history": action_history
         })
         
         return Command(
             update={
                 "coordinator_analysis": enhanced_analysis,
                 "iteration_count": iteration + 1,
+                "action_history": action_history,
                 "streaming_chunks": chunks
             },
             goto=goto
@@ -246,7 +306,7 @@ def _fallback_analysis(query: str) -> Dict[str, Any]:
 
 def _build_coordinator_chunks(image_files: List[str], next_action: str, reasoning: str, 
                             search_strategy: str, missing_info: str, browser_capabilities: List[str], 
-                            goto: str, evaluation_details: Dict[str, Any]) -> List[str]:
+                            goto: str, evaluation_details: Dict[str, Any], action_history: List[str]) -> List[str]:
     """Build streaming chunks for coordinator output."""
     chunks = []
     
@@ -262,20 +322,41 @@ def _build_coordinator_chunks(image_files: List[str], next_action: str, reasonin
         else:
             chunks.append(f"✅ **Previous Action:** {prev_action}")
     
+    # Show action history if available
+    if action_history:
+        recent_actions = action_history[-3:]  # Show last 3 actions
+        chunks.append(f"📈 **Recent Actions:** {' → '.join(recent_actions)}")
+    
     if image_files:
         chunks.append(f"🖼️ **Vision enabled:** {len(image_files)} images detected")
     
+    # Check if this is a strategy switch due to multiple failed attempts
+    is_strategy_switch = False
+    if action_history:
+        if next_action == "web_search" and action_history.count("browser_automation") >= 2:
+            is_strategy_switch = True
+        elif next_action == "browser_automation" and action_history.count("web_search") >= 2:
+            is_strategy_switch = True
+        elif next_action == "create_tools" and len(action_history) >= 4:
+            is_strategy_switch = True
+    
     if next_action == "browser_automation":
         chunks.append(f"🌐 **Coordinator:** {reasoning}")
+        if is_strategy_switch:
+            chunks.append(f"🔄 **Strategy Switch:** Multiple web search attempts failed, trying browser automation")
         chunks.append(f"🤖 **Browser Capabilities:** {', '.join(browser_capabilities)}")
         chunks.append(f"→ Routing to browser automation")
     elif next_action == "web_search":
         chunks.append(f"🧠 **Coordinator:** {reasoning}")
+        if is_strategy_switch:
+            chunks.append(f"🔄 **Strategy Switch:** Multiple browser attempts failed, trying web search")
         chunks.append(f"🎯 **Strategy:** {search_strategy} search")
         chunks.append(f"💡 **Missing:** {missing_info}")
         chunks.append(f"→ Routing to {goto}")
     else:
         chunks.append(f"🧠 **Coordinator:** {reasoning}")
+        if is_strategy_switch and next_action == "create_tools":
+            chunks.append(f"🔄 **Strategy Switch:** Alternating approaches failed, trying tool creation")
         chunks.append(f"→ Routing to {goto}")
     
     return chunks 

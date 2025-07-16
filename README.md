@@ -210,6 +210,10 @@ ANTHROPIC_API_KEY=your_anthropic_api_key
 
 # Optional for enhanced web search
 FIRECRAWL_API_KEY=your_firecrawl_api_key
+
+# Optional browser automation configuration
+BROWSER_TIMEOUT_SECONDS=180  # Increase timeout for complex tasks (default: 120s)
+BROWSER_MAX_STEPS=40         # Increase max steps for complex tasks (default: 30)
 ```
 
 **Note:** LiteLLM support for multiple LLM providers will be added back in a future update, allowing you to use various AI model providers through a unified interface.

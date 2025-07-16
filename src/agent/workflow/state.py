@@ -25,6 +25,9 @@ class State(MessagesState):
     mcp_execution_results: List[str] = []
     browser_results: List[str] = []
     
+    # Action tracking
+    action_history: List[str] = []
+    
     # Evaluation and synthesis
     answer_completeness: float = 0.0
     final_answer: str = ""

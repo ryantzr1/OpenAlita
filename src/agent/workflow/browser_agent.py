@@ -64,7 +64,7 @@ def browser_agent_node(state: State) -> Command[Literal["evaluator", "web_agent"
             )
         
         # Check for required API keys
-        openai_api_key = os.getenv("OPENAI_API_KEY", "")
+        openai_api_key = os.getenv("LLM_API_KEY", "")
         
         if not openai_api_key:
             chunks.append("❌ **Browser automation requires OpenAI API key**\n")
@@ -135,11 +135,12 @@ def browser_agent_node(state: State) -> Command[Literal["evaluator", "web_agent"
             import sys
             import io
             
-            # Simple timeout calculation
-            timeout_seconds = 60  # Simple default like main branch
-            max_steps = 20        # Simple default like main branch
+            # Enhanced timeout calculation - longer timeout for complex tasks
+            timeout_seconds = int(os.getenv("BROWSER_TIMEOUT_SECONDS", "300"))  # Configurable timeout
+            max_steps = int(os.getenv("BROWSER_MAX_STEPS", "40"))              # Configurable max steps
             
             chunks.append(f"🎯 **Executing browser automation...**\n")
+            chunks.append(f"⏱️ **Timeout:** {timeout_seconds}s, **Max Steps:** {max_steps}\n")
             chunks.append("📺 **Browser automation output:**\n")
             chunks.append("=" * 50 + "\n")
             
@@ -161,7 +162,9 @@ def browser_agent_node(state: State) -> Command[Literal["evaluator", "web_agent"
             browser_logger.setLevel(logging.INFO)
             
             try:
-                # Run browser automation
+                # Run browser automation with enhanced timeout handling
+                chunks.append("🔄 **Starting browser automation...**\n")
+                
                 result = asyncio.run(asyncio.wait_for(
                     agent.run(max_steps=max_steps),
                     timeout=timeout_seconds
@@ -232,6 +235,35 @@ def browser_agent_node(state: State) -> Command[Literal["evaluator", "web_agent"
                 )
                 
             except asyncio.TimeoutError:
+                execution_time = time.time() - start_time
+                chunks.append("=" * 50 + "\n")
+                chunks.append(f"⏰ **Browser automation timed out after {timeout_seconds}s**\n")
+                chunks.append(f"⏱️ **Execution Time:** {execution_time:.1f}s\n")
+                chunks.append("💡 **Note:** Task may have been partially completed\n")
+                
+                # Try to extract partial results even on timeout
+                browser_results = []
+                try:
+                    # Check if we have any partial results from browser-use
+                    if 'result' in locals():
+                        final_result = result.final_result()
+                        if final_result:
+                            result_text = str(final_result)[:500]
+                            browser_results.append(f"Partial result (timeout): {result_text}")
+                        
+                        urls = result.urls()
+                        if urls:
+                            browser_results.append(f"URLs visited (partial): {len(urls)}")
+                        
+                        actions = result.action_names()
+                        if actions:
+                            browser_results.append(f"Actions executed (partial): {len(actions)}")
+                except:
+                    pass
+                
+                if not browser_results:
+                    browser_results.append(f"Browser automation timed out after {timeout_seconds}s - no partial results available")
+                
                 raise Exception(f"Browser automation timed out after {timeout_seconds}s")
             except Exception as e:
                 raise Exception(f"Browser automation execution error: {str(e)}")

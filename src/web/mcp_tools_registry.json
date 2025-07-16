@@ -1,0 +1,34 @@
+[
+  {
+    "name": "calculate_the_area",
+    "description": "Tool for: Calculate the area of a circle with radius 10",
+    "function": null,
+    "metadata": {
+      "name": "calculate_the_area",
+      "description": "Tool for: Calculate the area of a circle with radius 10",
+      "args": "query=\"\"",
+      "returns": "processed result",
+      "requires": "math (for pi constant)"
+    },
+    "script_content": "Here's a simple, focused function to calculate the area of a circle with radius 10:\n\n```python\n# MCP Name: calculate_the_area\n# Description: Tool for: Calculate the area of a circle with radius 10\n# Arguments: query (string) - the user query to process\n# Returns: processed result\n# Requires: math (for pi constant)\n\nimport math\n\ndef calculate_the_area(query=\"\"):\n    try:\n        # Fixed radius of 10 as per the specification\n        radius = 10\n        \n        # Calculate area using the formula: A = \u03c0r\u00b2\n        area = math.pi * radius ** 2\n        \n        # Round to 2 decimal places for cleaner output\n        area_rounded = round(area, 2)\n        \n        return f\"The area of a circle with radius 10 is {area_rounded} square units\"\n    except Exception as e:\n        return f\"Error: {str(e)}\"\n```\n\nThis function:\n1. Uses a fixed radius of 10 as specified\n2. Calculates the area using the standard formula \u03c0r\u00b2\n3. Rounds the result to 2 decimal places for readability\n4. Returns a clear, formatted string with the result\n\nExample usage:\n```python\nresult = calculate_the_area()\n# Output: \"The area of a circle with radius 10 is 314.16 square units\"\n```\n\nThe function is simple, focused, and performs exactly one task: calculating the area of a circle with radius 10.",
+    "created_at": "2025-07-05T12:05:39.345495",
+    "usage_count": 1,
+    "last_used": "2025-07-05T12:05:40.847218"
+  },
+  {
+    "name": "get_ip_address",
+    "description": "Retrieves the current public IP address of the device/system",
+    "function": null,
+    "metadata": {
+      "name": "get_ip_address",
+      "description": "Retrieves the current public IP address of the device/system",
+      "args": "query=\"\"",
+      "returns": "string containing the public IP address",
+      "requires": "requests"
+    },
+    "script_content": "Here's a simple implementation of the `get_ip_address` function using the `requests` module to fetch the public IP address:\n\n```python\n# MCP Name: get_ip_address\n# Description: Retrieves the current public IP address of the device/system\n# Arguments: query (string) - the user query to process\n# Returns: string containing the public IP address\n# Requires: requests\n\nimport requests\n\ndef get_ip_address(query=\"\"):\n    try:\n        # Use a reliable IP address API service\n        response = requests.get('https://api.ipify.org?format=json')\n        \n        if response.status_code == 200:\n            ip_address = response.json()['ip']\n            return f\"Your current public IP address is: {ip_address}\"\n        else:\n            return \"Unable to retrieve IP address at this time.\"\n            \n    except Exception as e:\n        return f\"Error retrieving IP address: {str(e)}\"\n```\n\nThis implementation:\n1. Uses the free ipify API service to fetch the public IP\n2. Makes a simple GET request to the API\n3. Returns the IP address in a clear, readable format\n4. Includes proper error handling\n5. Requires only the `requests` module\n6. Performs a single, focused task\n\nTo use it:\n```python\n# Example usage\nresult = get_ip_address(\"what is my current ip address?\")\nprint(result)\n# Output: \"Your current public IP address is: XXX.XXX.XXX.XXX\"\n```\n\nNote: The `requests` module needs to be installed using:\n```bash\npip install requests\n```",
+    "created_at": "2025-07-05T12:07:31.688828",
+    "usage_count": 2,
+    "last_used": "2025-07-05T12:10:00.135923"
+  }
+]
