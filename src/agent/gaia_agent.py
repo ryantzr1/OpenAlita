@@ -47,15 +47,15 @@ class GAIAQuestion:
 class GAIAAgent:
     """Specialized agent for GAIA benchmark testing"""
     
-    def __init__(self):
+    def __init__(self, gaia_files_dir: str = "GAIA/2023/validation"):
         logger.info("Initializing GAIA Agent")
         self.llm_provider = LLMProvider()
         self.web_agent = WebAgent()
         self.mcp_factory = MCPFactory()
         self.langgraph_coordinator = LangGraphCoordinator()
-        # self.gaia_files_dir = "gaia_files"
-        self.gaia_files_dir = "/root/OpenAlita/gaia_dataset/2023/validation"
+        self.gaia_files_dir = gaia_files_dir
         logger.info("GAIA Agent initialized successfully")
+        logger.info(f"GAIA Agent will load files from: {self.gaia_files_dir}")
     
     def _load_file_content(self, file_name: str) -> Optional[str]:
         """Load and process file content from gaia_files directory"""
@@ -383,6 +383,7 @@ Rules for FINAL ANSWER:
 2. If it's a number, don't use comma or units ($, %, etc.) unless specified
 3. If it's a string, don't use articles or abbreviations, write digits in plain text
 4. If it's a comma separated list, apply the above rules for each element
+5. You can only extract the final answer from the Analysis field
 
 Provide ONLY the final answer (no explanation, no quotes, just the answer):"""
 
