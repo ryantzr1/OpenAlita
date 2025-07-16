@@ -22,11 +22,23 @@ logger = logging.getLogger('alita.langgraph')
 
 def browser_agent_router(state: State) -> Literal["evaluator", "web_agent"]:
     """Route browser agent results based on success/failure"""
-    mcp_results = state.get("mcp_execution_results", [])
     
-    # Check if browser automation failed with loop-related errors
-    for result in mcp_results:
-        if isinstance(result, str) and any(keyword in result.lower() for keyword in ["infinite loop", "loop", "unknown", "failed", "error"]):
+    # 潜在问题说明 (Potential Issues):
+    # 1. 关键词匹配可能过于简单 - 任何包含"error"、"failed"、"loop"的结果都会触发回退
+    #    (Keyword matching might be too simple - any result containing "error", "failed", "loop" triggers fallback)
+    # 2. 可能产生误报 - 例如"feedback loop"、"loop through results"等正常情况也会被误判
+    #    (May cause false positives - e.g., "feedback loop", "loop through results" will be misclassified)
+    # 3. 忽略了部分成功的情况 - 即使浏览器自动化部分成功，任何错误都会导致回退到网络搜索
+    #    (Ignores partial success - any error causes fallback even if browser automation was partially successful)
+    # 4. 没有考虑错误的严重程度 - 轻微错误和严重错误被同等对待
+    #    (Doesn't consider error severity - minor and critical errors are treated equally)
+    # 5. 可能错过有用的结果 - 即使有最终结果，任何错误也会触发回退
+    #    (May miss useful results - any error triggers fallback even if there's a final result)
+    
+    browser_results = state.get("browser_results", [])
+    
+    for result in browser_results:
+        if isinstance(result, str) and any(keyword in result.lower() for keyword in ["Browser automation failed", "infinite loop", "loop", "unknown", "failed", "error"]):
             return "web_agent"  # Fallback to web search only on actual failures
     
     return "evaluator"  # Normal flow - let evaluator decide
@@ -34,14 +46,11 @@ def browser_agent_router(state: State) -> Literal["evaluator", "web_agent"]:
 def browser_agent_node(state: State) -> Command[Literal["evaluator", "web_agent"]]:
     """Simplified browser agent node that captures browser-use's native logging"""
     logger.info("Browser agent starting...")
-    
+
     # Load environment variables
     load_dotenv()
-    
     query = state["original_query"]
-    coordinator_analysis = state.get("coordinator_analysis", {})
-    browser_capabilities = coordinator_analysis.get("browser_capabilities_needed", [])
-    
+     
     chunks = [f"🌐 **Browser Agent:** Starting browser automation\n"]
     chunks.append(f"📝 **Task:** {query}\n")
     
@@ -49,29 +58,27 @@ def browser_agent_node(state: State) -> Command[Literal["evaluator", "web_agent"
         # Check if browser-use is available
         try:
             import browser_use
-            from browser_use import Agent
         except ImportError:
             chunks.append("❌ **Error:** browser-use not installed\n")
             chunks.append("💡 **Install with:** pip install browser-use\n")
             
             return Command(
                 update={
-                    "mcp_execution_results": ["Browser automation failed: browser-use not installed"],
+                    "browser_results": ["Browser automation failed: browser-use not installed"],
                     "streaming_chunks": chunks
                 },
                 goto="evaluator"
             )
         
-        # Check for required API keys
         openai_api_key = os.getenv("LLM_API_KEY", "")
         
         if not openai_api_key:
-            chunks.append("❌ **Browser automation requires OpenAI API key**\n")
-            chunks.append("💡 **Add to .env file:** OPENAI_API_KEY=your_openai_api_key\n")
+            chunks.append("❌ **Browser automation requires LLM API key**\n")
+            chunks.append("💡 **Add to .env file:** LLM_API_KEY=your_openai_api_key\n")
             
             return Command(
                 update={
-                    "mcp_execution_results": ["Browser automation failed: OpenAI API key required"],
+                    "browser_results": ["Browser automation failed: OpenAI API key required"],
                     "streaming_chunks": chunks
                 },
                 goto="evaluator"
@@ -85,23 +92,17 @@ def browser_agent_node(state: State) -> Command[Literal["evaluator", "web_agent"
         """
         
         try:
-
-            # Completely disable browser-use cloud features via environment
-            os.environ["BROWSER_USE_DISABLE_CLOUD"] = "true"
-            os.environ["BROWSER_USE_DISABLE_TELEMETRY"] = "true"
-
             # Use GPT-4 with optimized settings for browser automation
             chat_model = ChatOpenAI(
                 model="gpt-4o",
                 base_url="https://oneapi.deepwisdom.ai/v1",
                 api_key=openai_api_key,
-                temperature=0,  # Low temperature for consistent actions
+                temperature=0,
             )
                         
             chunks.append("🤖 **Using GPT-4**\n")
 
             extend_system_message = """
-
             SKIP YOUTUBE ADS INSTRUCTIONS:
             - To skip a Youtube ad, click the Skip button
             - The Skip button is the button that says "Skip" and is usually located at the bottom of the video player
@@ -109,7 +110,7 @@ def browser_agent_node(state: State) -> Command[Literal["evaluator", "web_agent"
             """
             
             
-            # Create browser-use agent with minimal configuration
+            # Create browser-use agent
             agent = Agent(
                 task=task_description,
                 llm=chat_model,
@@ -128,7 +129,7 @@ def browser_agent_node(state: State) -> Command[Literal["evaluator", "web_agent"
             
             # Enhanced timeout calculation - longer timeout for complex tasks
             timeout_seconds = int(os.getenv("BROWSER_TIMEOUT_SECONDS", "500"))  # Configurable timeout
-            max_steps = int(os.getenv("BROWSER_MAX_STEPS", "40"))              # Configurable max steps
+            max_steps = int(os.getenv("BROWSER_MAX_STEPS", "60"))              # Configurable max steps
             
             chunks.append(f"🎯 **Executing browser automation...**\n")
             chunks.append(f"⏱️ **Timeout:** {timeout_seconds}s, **Max Steps:** {max_steps}\n")
@@ -178,13 +179,12 @@ def browser_agent_node(state: State) -> Command[Literal["evaluator", "web_agent"
                 # Extract simple results with size limits
                 browser_results = []
                 
-                # Use proper browser-use API methods
                 try:
                     # Get final result using proper API
                     final_result = result.final_result()
                     if final_result:
                         # Limit size to prevent payload issues
-                        result_text = str(final_result)[:1000]
+                        result_text = str(final_result)[:2000]
                         browser_results.append(f"Final result: {result_text}")
                     
                     # Check for errors
@@ -210,11 +210,11 @@ def browser_agent_node(state: State) -> Command[Literal["evaluator", "web_agent"
                     browser_results.append(f"Result extraction completed with API access issues")
                 
                 # Apply browser results limit to prevent context overflow
-                browser_results = limit_browser_results(browser_results, max_results=2)
+                browser_results = limit_browser_results(browser_results, max_results=5)
                 
                 # Ensure total results don't get too large
                 if len(str(browser_results)) > 10000:  # 10KB limit
-                    browser_results = browser_results[:2]  # Keep only first 2 results
+                    browser_results = browser_results[:5]  # Keep only first 2 results
                     browser_results.append("Result: Browser automation completed (truncated for size)")
                 
                 return Command(
@@ -239,7 +239,7 @@ def browser_agent_node(state: State) -> Command[Literal["evaluator", "web_agent"
                     if 'result' in locals():
                         final_result = result.final_result()
                         if final_result:
-                            result_text = str(final_result)[:500]
+                            result_text = str(final_result)[:2000]
                             browser_results.append(f"Partial result (timeout): {result_text}")
                         
                         urls = result.urls()
