@@ -49,6 +49,20 @@ def write_submission_entry(submission_file: str, task_id: str, model_answer: str
         print(f"❌ Error writing to submission file: {e}")
         return False
 
+def analyze_result(file_path: str, processed_count: int = 0, correct_answers: int = 0):
+    try:
+        with open(file_path, 'r') as f:
+            # Load the entire JSON array from file
+            tasks = json.load(f)
+            processed_count += len(tasks)
+            correct_answers += sum(1 for task in tasks if task.get('is_correct', False))
+    except json.JSONDecodeError as e:
+        print(f"Error: File {file_path} is not valid JSON: {e}")
+    except Exception as e:
+        print(f"Error: Failed to process file {file_path}: {e}")
+    
+    return processed_count, correct_answers
+
 def main():
     parser = argparse.ArgumentParser(description='Run GAIA benchmark tests with Open-Alita')
     parser.add_argument('jsonl_file', help='Path to JSONL file containing GAIA questions')
@@ -92,11 +106,13 @@ def main():
     results = []
     start_time = time.time()
     processed_count = 0
-    skipped_count = 0
     correct_answers = 0  # Track correct answers for real-time accuracy
-    
+
+    if args.submission and args.resume and args.output:
+        processed_count, correct_answers = analyze_result(args.output, processed_count, correct_answers)
+
     try:
-        for result in agent.run_gaia_benchmark(args.jsonl_file, args.max_questions, args.verbose, skip_tasks=existing_tasks):
+        for result in agent.run_gaia_benchmark(args.jsonl_file, args.max_questions, args.verbose, existing_tasks, args.resume, correct_answers):
             if "error" in result:
                 print(f"❌ Error: {result['error']}")
                 sys.exit(1)
@@ -112,25 +128,33 @@ def main():
                 print(f"🎯 Accuracy: {summary['accuracy']:.2f}%")
                 print(f"⏱️  Total Time: {time.time() - start_time:.2f}s")
                 if args.resume:
-                    print(f"⏭️  Skipped (already answered): {skipped_count}")
+                    print(f"⏭️  Skipped (already answered): {summary['skipped_questions']}")
                 print("=" * 50)
                 
                 # Save results if output file specified
                 if args.output:
-                    with open(args.output, 'w') as f:
-                        json.dump(results, f, indent=2)
-                    print(f"💾 Results saved to: {args.output}")
+                    if args.resume:
+                        try:
+                            with open(args.output, 'r') as f1:  # 使用 'a' 模式打开文件以追加内容
+                                merge_results=json.load(f1)+results
+                            with open(args.output, 'w') as f:  # 使用 'w' 模式打开文件以写入内容
+                                json.dump(merge_results, f, indent=2)
+                            print(f"💾 Results appended to: {args.output}")
+                        except Exception as e:
+                            print(f"An error occurred while appending the file: {e}")
+                    else:
+                        try:
+                            with open(args.output, 'w') as f:  # 使用 'w' 模式打开文件以写入内容
+                                json.dump(results, f, indent=2)
+                            print(f"💾 Results saved to: {args.output}")
+                        except Exception as e:
+                            print(f"An error occurred while writing the file: {e}")
                 
                 break
             else:
                 # Individual question result
                 task_id = result['task_id']
-                print(f"\n Task ID: {task_id}")
-                
-                # Skip if already processed and resuming
-                if result.get('skipped', False):
-                    skipped_count += 1
-                    continue
+            
                 
                 # Write to submission file immediately if specified
                 if args.submission:
@@ -188,4 +212,4 @@ def main():
         print(f"📝 All answers saved incrementally to: {args.submission}")
 
 if __name__ == "__main__":
-    main() 
+    main()
