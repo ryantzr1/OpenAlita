@@ -31,7 +31,6 @@ def browser_agent_router(state: State) -> Literal["evaluator", "web_agent"]:
     
     return "evaluator"  # Normal flow - let evaluator decide
 
-
 def browser_agent_node(state: State) -> Command[Literal["evaluator", "web_agent"]]:
     """Simplified browser agent node that captures browser-use's native logging"""
     logger.info("Browser agent starting...")
@@ -98,9 +97,7 @@ def browser_agent_node(state: State) -> Command[Literal["evaluator", "web_agent"
                 api_key=openai_api_key,
                 temperature=0,  # Low temperature for consistent actions
             )
-            
-            planner_llm = ChatOpenAI(model='gpt-4o-mini', base_url="https://oneapi.deepwisdom.ai/v1", api_key=openai_api_key)
-            
+                        
             chunks.append("🤖 **Using GPT-4**\n")
 
             extend_system_message = """
@@ -111,20 +108,14 @@ def browser_agent_node(state: State) -> Command[Literal["evaluator", "web_agent"
             - You can also click the Skip button to skip the ad
             """
             
-            extend_planner_system_message = """
-            PRIORITIZE gathering information before taking any action.
-            If you have been stuck on the same page for too long, try a different approach.
-            """
             
             # Create browser-use agent with minimal configuration
             agent = Agent(
                 task=task_description,
                 llm=chat_model,
                 use_vision=True,
-                is_planner_reasoning=True,
-                planner_llm=planner_llm,
                 extend_system_message=extend_system_message,
-                extend_planner_system_message=extend_planner_system_message
+                available_file_paths=["downloads"]
             )
             
             chunks.append("✅ **Browser agent configured**\n")
@@ -136,7 +127,7 @@ def browser_agent_node(state: State) -> Command[Literal["evaluator", "web_agent"
             import io
             
             # Enhanced timeout calculation - longer timeout for complex tasks
-            timeout_seconds = int(os.getenv("BROWSER_TIMEOUT_SECONDS", "300"))  # Configurable timeout
+            timeout_seconds = int(os.getenv("BROWSER_TIMEOUT_SECONDS", "500"))  # Configurable timeout
             max_steps = int(os.getenv("BROWSER_MAX_STEPS", "40"))              # Configurable max steps
             
             chunks.append(f"🎯 **Executing browser automation...**\n")
