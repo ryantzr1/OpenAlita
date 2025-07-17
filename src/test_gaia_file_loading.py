@@ -28,16 +28,22 @@ def create_dummy_files():
     with open(os.path.join(TEST_DIR, "example.pdb"), "w") as f:
         f.write("HEADER    DUMMY PDB FILE\nATOM      1  N   ALA A   1")
 
-    # .pdf
-    with open(os.path.join(TEST_DIR, "example.pdf"), "wb") as f:
-        f.write(b"%PDF-1.4\n%Dummy PDF")
-
     # .jpg
     img = Image.new("RGB", (100, 100), color="blue")
     img.save(os.path.join(TEST_DIR, "example.jpg"))
 
     # .png
     img.save(os.path.join(TEST_DIR, "example.png"))
+    
+    # .pdf
+    #1
+    img.save(os.path.join(TEST_DIR, "example1.pdf"), "PDF")
+    #2
+    from reportlab.pdfgen import canvas
+    pdf_path = os.path.join(TEST_DIR, "example2.pdf")
+    c = canvas.Canvas(pdf_path)
+    c.drawString(100, 750, "Dummy PDF content for testing.")
+    c.save()
 
     # .wav
     wav_path = os.path.join(TEST_DIR, "example.wav")
@@ -82,7 +88,8 @@ def test_file_loading():
         "example.csv",
         "example.xlsx",
         "example.pdb",
-        "example.pdf",
+        "example1.pdf",
+        "example2.pdf",
         "example.jpg",
         "example.png",
         "example.wav",

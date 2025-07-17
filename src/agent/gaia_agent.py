@@ -243,6 +243,27 @@ class GAIAAgent:
         except Exception as e:
             logger.error(f"Error reading PDB file {file_path}: {e}")
             return f"Error reading PDB file: {str(e)}"
+
+    def _process_pdf_file(self, file_path: str) -> str:
+        """Process PDF file and return extracted text content"""
+        try:
+            import PyPDF2
+
+            with open(file_path, "rb") as f:
+                reader = PyPDF2.PdfReader(f)
+                content = ""
+                for page_num, page in enumerate(reader.pages):
+                    text = page.extract_text()
+                    if text:
+                        content += f"\n[Page {page_num + 1}]\n{text}"
+                    else:
+                        content += f"\n[Page {page_num + 1}]\n(No extractable text)"
+
+            return content.strip() or "[Empty PDF or no extractable text]"
+
+        except Exception as e:
+            logger.error(f"Error reading PDF file {file_path}: {e}")
+            return f"Error reading PDF file: {str(e)}"
     
     def _process_image_file(self, file_path: str) -> str:
         """Process image file - provide basic image information for MCP vision analysis"""
