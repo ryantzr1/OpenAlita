@@ -80,6 +80,8 @@ class GAIAAgent:
                 return self._process_csv_file(file_path)
             elif file_name.lower().endswith('.txt'):
                 return self._process_text_file(file_path)
+            elif file_name.lower().endswith('.xml'):
+                return self._process_xml_file(file_path)
             elif file_name.lower().endswith('.pdb'):
                 return self._process_pdb_file(file_path)
             elif file_name.lower().endswith('.pdf'):
@@ -268,6 +270,41 @@ class GAIAAgent:
         except Exception as e:
             logger.error(f"Error reading PDF file {file_path}: {e}")
             return f"Error reading PDF file: {str(e)}"
+
+    def _process_xml_file(self, file_path: str) -> str:
+        """Extract and return text content from document body only."""
+        try:
+            import xml.etree.ElementTree as ET
+            
+            # Define WordprocessingML namespaces
+            namespaces = {
+                'w': 'http://schemas.microsoft.com/office/word/2003/wordml',
+                'wx': 'http://schemas.microsoft.com/office/word/2003/auxHint'
+            }
+            
+            tree = ET.parse(file_path)
+            root = tree.getroot()
+            
+            # Find document body using namespace
+            body = root.find('.//w:body', namespaces)
+            if body is None:
+                return "[No document body found]"
+            
+            # Extract text from <w:t> elements within body
+            text_elements = body.findall('.//w:t', namespaces)
+            text_parts = [
+                elem.text.strip() for elem in text_elements 
+                if elem.text and elem.text.strip()
+            ]
+            
+            return "\n".join(text_parts) if text_parts else "[No text content found]"
+
+        except ET.ParseError as e:
+            logger.error(f"XML parse error in {file_path}: {e}")
+            return f"XML parsing error: {str(e)}"
+        except Exception as e:
+            logger.error(f"Error processing XML file {file_path}: {e}")
+            return f"File processing error: {str(e)}"
     
     def _process_image_file(self, file_path: str) -> str:
         """Process image file - provide basic image information for MCP vision analysis"""
@@ -319,18 +356,46 @@ The MCP agent can create a vision analysis tool to extract text or analyze the i
             return f"Error reading PPTX file: {str(e)}"
 
     def _process_zip_file(self, file_path: str) -> str:
-        """Process ZIP file and return list of contained files"""
+        """
+        Process a ZIP file: list contained files and delegate processing of each file
+        to _load_file_content using temporary extracted paths.
+        """
+        import zipfile
+        import tempfile
+        import os
+
+        content_parts = [f"ZIP File: {os.path.basename(file_path)}"]
+
         try:
-            import zipfile
-            content_parts = [f"ZIP File: {os.path.basename(file_path)}"]
             with zipfile.ZipFile(file_path, 'r') as zipf:
                 file_list = zipf.namelist()
                 content_parts.append("Contained files:")
                 content_parts.extend(file_list)
-            return "\n".join(content_parts)
+
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    zipf.extractall(tmpdir)
+
+                    for inner_file in file_list:
+                        extracted_path = os.path.join(tmpdir, inner_file)
+
+                        if os.path.isdir(extracted_path):
+                            continue  # Skip directories
+
+                        content_parts.append(f"\n--- Processing file: {inner_file} ---")
+
+                        try:
+                            # Call parent loader with extracted path
+                            result = self._load_file_content(extracted_path)
+                            content_parts.append(result if result else "[No content extracted]")
+                        except Exception as e:
+                            content_parts.append(f"Error processing {inner_file}: {e}")
+
         except Exception as e:
             logger.error(f"Error reading ZIP file {file_path}: {e}")
             return f"Error reading ZIP file: {str(e)}"
+
+        return "\n".join(content_parts)
+
 
     def _process_jsonld_file(self, file_path: str) -> str:
         """Process JSON-LD file and return pretty-printed JSON"""
