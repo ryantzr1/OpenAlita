@@ -145,15 +145,15 @@ def test_GAIA_file_loading():
     if os.path.exists(validation_dir):
         for fname in os.listdir(validation_dir):
             file_path = os.path.join(validation_dir, fname)
-            if os.path.isfile(file_path) and fname.endswith(('.zip')):
+            if os.path.isfile(file_path) and fname.endswith(('.pdf')):
                 print(f"\n--- Testing file: {fname} ---")
                 result = agent_validation._load_file_content(fname)
                 if result is None:
                     print("❌ Failed to load or unsupported file format.")
                 else:
                     print("✅ File loaded successfully. Preview:")
-                    # print(result[:200])
-                    print(result)
+                    print(result[:200])
+                    # print(result)
     else:
         print(f"Directory not found: {validation_dir}")
 
@@ -161,21 +161,21 @@ def test_GAIA_file_loading():
     if os.path.exists(test_dir):
         for fname in os.listdir(test_dir):
             file_path = os.path.join(test_dir, fname)
-            if os.path.isfile(file_path) and fname.endswith(('.zip')):
+            if os.path.isfile(file_path) and fname.endswith(('.pdf')):
                 print(f"\n--- Testing file: {fname} ---")
                 result = agent_test._load_file_content(fname)
                 if result is None:
                     print("❌ Failed to load or unsupported file format.")
                 else:
                     print("✅ File loaded successfully. Preview:")
-                    # print(result[:200])
-                    print(result)
+                    print(result[:200])
+                    # print(result)
     else:
         print(f"Directory not found: {test_dir}")
     
 
 if __name__ == "__main__":
-    # create_dummy_files()
-    # test_DUMMY_file_loading()
-    # clean_up()
+    create_dummy_files()
+    test_DUMMY_file_loading()
+    clean_up()
     test_GAIA_file_loading()

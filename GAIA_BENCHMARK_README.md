@@ -75,9 +75,12 @@ python src/gaia_benchmark.py test_gaia_sample.jsonl --max-questions 1 --output r
 
 ```bash
 # Run on your GAIA questions file with recommended flags
-python src/gaia_benchmark.py test_gaia_sample.jsonl --output benchmark_results.json --submission gaia_submission.jsonl --verbose
 
-python src/gaia_benchmark.py test_gaia_sample.jsonl --output benchmark_results_github.json --submission gaia_submission_github.jsonl --verbose
+python src/gaia_benchmark.py test_gaia_sample.jsonl \
+	--attached_files_dir GAIA/2023/validation \
+	--output benchmark_results.json \
+	--submission gaia_submission.jsonl \
+	--verbose
 ```
 
 **💡 Recommended Flags:**
