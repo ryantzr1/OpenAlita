@@ -66,6 +66,7 @@ def analyze_result(file_path: str, processed_count: int = 0, correct_answers: in
 def main():
     parser = argparse.ArgumentParser(description='Run GAIA benchmark tests with Open-Alita')
     parser.add_argument('jsonl_file', help='Path to JSONL file containing GAIA questions')
+    parser.add_argument('--attached_files_dir', type=str, help='Folder containing attached files included in GAIA questions e.g., png, pdf, mp3')
     parser.add_argument('--max-questions', type=int, help='Maximum number of questions to process')
     parser.add_argument('--output', help='Output file for results (JSON format)')
     parser.add_argument('--submission', help='Output file for GAIA submission (JSONL format)')
@@ -96,7 +97,7 @@ def main():
     
     # Initialize GAIA agent
     try:
-        agent = GAIAAgent()
+        agent = GAIAAgent(gaia_files_dir=args.attached_files_dir)
         print("✅ GAIA Agent initialized successfully")
     except Exception as e:
         print(f"❌ Failed to initialize GAIA Agent: {e}")
