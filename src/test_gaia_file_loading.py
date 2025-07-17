@@ -145,14 +145,14 @@ def test_GAIA_file_loading():
     if os.path.exists(validation_dir):
         for fname in os.listdir(validation_dir):
             file_path = os.path.join(validation_dir, fname)
-            if os.path.isfile(file_path):
+            if os.path.isfile(file_path) and fname.endswith(('.m4a')):
                 print(f"\n--- Testing file: {fname} ---")
                 result = agent_validation._load_file_content(fname)
                 if result is None:
                     print("❌ Failed to load or unsupported file format.")
                 else:
                     print("✅ File loaded successfully. Preview:")
-                    print(result[:50])
+                    print(result[:200])
     else:
         print(f"Directory not found: {validation_dir}")
 
@@ -160,14 +160,14 @@ def test_GAIA_file_loading():
     if os.path.exists(test_dir):
         for fname in os.listdir(test_dir):
             file_path = os.path.join(test_dir, fname)
-            if os.path.isfile(file_path):
+            if os.path.isfile(file_path) and fname.endswith(('.m4a', '.mp3')):
                 print(f"\n--- Testing file: {fname} ---")
                 result = agent_test._load_file_content(fname)
                 if result is None:
                     print("❌ Failed to load or unsupported file format.")
                 else:
                     print("✅ File loaded successfully. Preview:")
-                    print(result[:50])
+                    print(result[:200])
     else:
         print(f"Directory not found: {test_dir}")
     
