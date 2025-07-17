@@ -86,14 +86,18 @@ class GAIAAgent:
                 return self._process_pdf_file(file_path)
             elif file_name.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff')):
                 return self._process_image_file(file_path)
+            elif file_name.lower().endswith('.pptx'):
+                return self._process_pptx_file(file_path)
+            elif file_name.lower().endswith('.zip'):
+                return self._process_zip_file(file_path)
+            elif file_name.lower().endswith(('.jsonld', 'json')):
+                return self._process_jsonld_file(file_path)
+            elif file_name.lower().endswith('.py'):
+                return self._process_python_file(file_path)
+            elif file_name.lower().endswith('.docx'):
+                return self._process_docx_file(file_path)
             elif file_name.lower().endswith(('.mp3', '.wav', '.m4a', '.flac', '.ogg', '.aac')):
-                # Transcribe audio using OpenAI Whisper API
-                from src.utils import transcribe_audio_openai
-                transcript = transcribe_audio_openai(file_path)
-                if transcript:
-                    return f"[AUDIO TRANSCRIPT]\n{transcript}"
-                else:
-                    return None
+                return self._process_audio_file(file_path)
             else:
                 logger.warning(f"Unsupported file type: {file_name}")
                 return None
@@ -292,6 +296,90 @@ The MCP agent can create a vision analysis tool to extract text or analyze the i
         except Exception as e:
             logger.error(f"Error processing image file {file_path}: {e}")
             return f"Image file: {os.path.basename(file_path)}\nError processing image: {str(e)}"
+
+    def _process_pptx_file(self, file_path: str) -> str:
+        """Process PPTX file and return slide titles and text content"""
+        try:
+            from pptx import Presentation
+            
+            prs = Presentation(file_path)
+            content_parts = ["PPTX File Content:"]
+            
+            for i, slide in enumerate(prs.slides, start=1):
+                slide_text = []
+                for shape in slide.shapes:
+                    if shape.has_text_frame:
+                        slide_text.append(shape.text)
+                content_parts.append(f"\n[Slide {i}]\n" + "\n".join(slide_text))
+            
+            return "\n".join(content_parts) if len(content_parts) > 1 else "[Empty PPTX or no extractable text]"
+        
+        except Exception as e:
+            logger.error(f"Error reading PPTX file {file_path}: {e}")
+            return f"Error reading PPTX file: {str(e)}"
+
+    def _process_zip_file(self, file_path: str) -> str:
+        """Process ZIP file and return list of contained files"""
+        try:
+            import zipfile
+            content_parts = [f"ZIP File: {os.path.basename(file_path)}"]
+            with zipfile.ZipFile(file_path, 'r') as zipf:
+                file_list = zipf.namelist()
+                content_parts.append("Contained files:")
+                content_parts.extend(file_list)
+            return "\n".join(content_parts)
+        except Exception as e:
+            logger.error(f"Error reading ZIP file {file_path}: {e}")
+            return f"Error reading ZIP file: {str(e)}"
+
+    def _process_jsonld_file(self, file_path: str) -> str:
+        """Process JSON-LD file and return pretty-printed JSON"""
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            return "JSON-LD File Content:\n" + json.dumps(data, indent=2)
+        
+        except Exception as e:
+            logger.error(f"Error reading JSON-LD file {file_path}: {e}")
+            return f"Error reading JSON-LD file: {str(e)}"
+
+    def _process_python_file(self, file_path: str) -> str:
+        """Process Python file and return its source code"""
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            return f"Python Script:\n{content}"
+        
+        except Exception as e:
+            logger.error(f"Error reading Python file {file_path}: {e}")
+            return f"Error reading Python file: {str(e)}"
+
+    def _process_docx_file(self, file_path: str) -> str:
+        """Process DOCX file and return text content"""
+        try:
+            import docx
+            
+            doc = docx.Document(file_path)
+            paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+            
+            return "DOCX File Content:\n" + "\n".join(paragraphs) if paragraphs else "[Empty DOCX file]"
+        
+        except Exception as e:
+            logger.error(f"Error reading DOCX file {file_path}: {e}")
+            return f"Error reading DOCX file: {str(e)}"
+    
+    def _process_audio_file(self, file_path: str) -> str:
+        """Process audio file and return text content ('.mp3', '.wav', '.m4a', '.flac', '.ogg', '.aac')"""
+        # Transcribe audio using OpenAI Whisper API
+        from src.utils import transcribe_audio_openai
+        transcript = transcribe_audio_openai(file_path)
+        if transcript:
+            return f"[AUDIO TRANSCRIPT]:\n{transcript}"
+        else:
+            return None
+
     
     def _create_file_context_prompt(self, question: str, file_content: str) -> str:
         """Create a prompt that includes file content for the agent"""
@@ -311,6 +399,7 @@ IMPORTANT: This is an image file. If the question requires analyzing the visual 
 3. Extract text, identify objects, or answer questions about the visual content
 
 Please analyze the question and determine if you need to create a vision analysis tool to process this image."""
+        # For non-image files, attach the file content directly 
         else:
             return f"""You have access to a file that contains relevant information for answering the question.
 

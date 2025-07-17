@@ -7,8 +7,27 @@ import wave
 from pptx import Presentation
 import zipfile
 import json
+from docx import Document
+import numpy as np
 
-TEST_DIR = "GAIA/2023/validation"
+TEST_DIR = "GAIA/2023"
+DUMMY_FILES = [
+        "example.txt",
+        "example.csv",
+        "example.xlsx",
+        "example.pdb",
+        "example1.pdf",
+        "example2.pdf",
+        "example.jpg",
+        "example.png",
+        "example.wav",
+        "example.pptx",
+        "example.zip",
+        "example.jsonld",
+        "example.py",
+        "example.docx"
+        "example.MOV"
+    ]
 
 def create_dummy_files():
     os.makedirs(TEST_DIR, exist_ok=True)
@@ -79,30 +98,25 @@ def create_dummy_files():
     with open(os.path.join(TEST_DIR, "example.py"), "w") as f:
         f.write("print('Hello from dummy Python script')\n")
 
+    # .docx
+    doc = Document()
+    doc.add_paragraph("This is a dummy Word document for testing.")
+    doc.save(os.path.join(TEST_DIR, "example.docx"))
+
+    # .mov (creating a minimal MOV file)
+    mov_path = os.path.join(TEST_DIR, "example.MOV")
+    # Create a very small video file (just header basically)
+    with open(mov_path, 'wb') as f:
+        f.write(b'\x00\x00\x00\x20ftypqt  \x00\x00\x00\x01qt  ')
+    
+
     print("✅ All dummy files created successfully!")
 
-def test_file_loading():
+def test_DUMMY_file_loading():
     agent = GAIAAgent(gaia_files_dir=TEST_DIR)
-    test_files = [
-        "example.txt",
-        "example.csv",
-        "example.xlsx",
-        "example.pdb",
-        "example1.pdf",
-        "example2.pdf",
-        "example.jpg",
-        "example.png",
-        "example.wav",
-        "example.pptx",
-        "example.zip",
-        "example.jsonld",
-        "example.py",
-        "example.docx"
-    ]
-
     print(f"\n🔍 [TEST] Testing GAIA Agent File Loading...\n")
 
-    for file_name in test_files:
+    for file_name in DUMMY_FILES:
         print(f"\n--- Testing file: {file_name} ---")
         result = agent._load_file_content(file_name)
         if result is None:
@@ -112,11 +126,54 @@ def test_file_loading():
             print(result[:500])
 
 def clean_up():
-    if os.path.exists(TEST_DIR):
-        shutil.rmtree(TEST_DIR)
-        print(f"\n🧹 Cleaned up test files from: {TEST_DIR}")
+    print("\n🧹 Cleaning up dummy files...")
+    for file_name in DUMMY_FILES:
+        file_path = os.path.join(TEST_DIR, file_name)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            print(f"Removed: {file_path}")
+    print("✅ Cleanup complete. Other files remain untouched.")
+
+def test_GAIA_file_loading():
+    validation_dir = os.path.join(TEST_DIR, "validation")
+    test_dir = os.path.join(TEST_DIR, "test")
+
+    agent_validation = GAIAAgent(gaia_files_dir=validation_dir)
+    agent_test = GAIAAgent(gaia_files_dir=test_dir)
+
+    print(f"\n🔍 [TEST] Testing all files in {validation_dir} ...\n")
+    if os.path.exists(validation_dir):
+        for fname in os.listdir(validation_dir):
+            file_path = os.path.join(validation_dir, fname)
+            if os.path.isfile(file_path):
+                print(f"\n--- Testing file: {fname} ---")
+                result = agent_validation._load_file_content(fname)
+                if result is None:
+                    print("❌ Failed to load or unsupported file format.")
+                else:
+                    print("✅ File loaded successfully. Preview:")
+                    print(result[:50])
+    else:
+        print(f"Directory not found: {validation_dir}")
+
+    print(f"\n🔍 [TEST] Testing all files in {test_dir} ...\n")
+    if os.path.exists(test_dir):
+        for fname in os.listdir(test_dir):
+            file_path = os.path.join(test_dir, fname)
+            if os.path.isfile(file_path):
+                print(f"\n--- Testing file: {fname} ---")
+                result = agent_test._load_file_content(fname)
+                if result is None:
+                    print("❌ Failed to load or unsupported file format.")
+                else:
+                    print("✅ File loaded successfully. Preview:")
+                    print(result[:50])
+    else:
+        print(f"Directory not found: {test_dir}")
+    
 
 if __name__ == "__main__":
     create_dummy_files()
-    test_file_loading()
+    test_DUMMY_file_loading()
     clean_up()
+    test_GAIA_file_loading()
