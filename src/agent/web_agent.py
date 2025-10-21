@@ -6,6 +6,7 @@ from typing import Optional, Dict, Any, List
 from urllib.parse import quote_plus, urljoin, urlparse
 import time
 from .llm_provider import LLMProvider
+from ddgs import DDGS
 
 class WebAgent:
     """Web agent for handling search queries and content extraction."""
@@ -213,108 +214,34 @@ Response:"""
             return []
     
     def _fallback_search(self, query: str, num_results: int) -> List[Dict[str, Any]]:
-        """Fallback search using DuckDuckGo."""
+        """Fallback search using DDGS (DuckDuckGo)."""
         try:
-            # First try DuckDuckGo instant answers API
-            instant_answer = self._get_duckduckgo_instant_answer(query)
-            if instant_answer:
-                return [instant_answer]
+            # Use DDGS text search with multiple backend support
+            ddgs = DDGS(timeout=10)
+            results = ddgs.text(
+                query=query,
+                region="us-en",
+                safesearch="moderate",
+                max_results=num_results,
+                backend="auto"  # Auto-selects best available backend
+            )
             
-            # Fall back to basic search results
-            return self._scrape_search_results(query, num_results)
-            
-        except Exception as e:
-            print(f"Fallback search error: {e}")
-            return []
-
-    def _get_duckduckgo_instant_answer(self, query: str) -> Optional[Dict[str, Any]]:
-        """Get instant answers from DuckDuckGo API."""
-        try:
-            url = f"https://api.duckduckgo.com/?q={quote_plus(query)}&format=json&no_html=1&skip_disambig=1"
-            response = self.session.get(url, timeout=10)
-            
-            if response.status_code == 200:
-                data = response.json()
-                
-                # Check for abstract (Wikipedia-style answers)
-                if data.get('Abstract'):
-                    return {
-                        'title': data.get('Heading', query),
-                        'content': data['Abstract'],
-                        'url': data.get('AbstractURL', ''),
-                        'source': 'DuckDuckGo Instant Answer',
-                        'type': 'instant_answer'
-                    }
-                
-                # Check for definition
-                if data.get('Definition'):
-                    return {
-                        'title': f"Definition of {query}",
-                        'content': data['Definition'],
-                        'url': data.get('DefinitionURL', ''),
-                        'source': 'DuckDuckGo Definition',
-                        'type': 'definition'
-                    }
-                
-                # Check for answer (direct answers)
-                if data.get('Answer'):
-                    return {
-                        'title': query,
-                        'content': data['Answer'],
-                        'url': '',
-                        'source': 'DuckDuckGo Direct Answer',
-                        'type': 'direct_answer'
-                    }
-        except Exception as e:
-            print(f"DuckDuckGo API error: {e}")
-        
-        return None
-    
-    def _scrape_search_results(self, query: str, num_results: int) -> List[Dict[str, Any]]:
-        """Scrape search results from DuckDuckGo."""
-        try:
-            # Use DuckDuckGo HTML search
-            search_url = f"https://duckduckgo.com/html/?q={quote_plus(query)}"
-            response = self.session.get(search_url, timeout=15)
-            
-            if response.status_code != 200:
-                return []
-            
-            # Simple regex-based extraction (basic implementation)
-            content = response.text
-            results = []
-            
-            # Pattern to match search result links and titles
-            result_pattern = r'<a[^>]+href="([^"]+)"[^>]*class="result__a"[^>]*>([^<]+)</a>'
-            snippet_pattern = r'<a[^>]+class="result__snippet"[^>]*>([^<]+)</a>'
-            
-            links = re.findall(result_pattern, content)
-            snippets = re.findall(snippet_pattern, content)
-            
-            for i, (url, title) in enumerate(links[:num_results]):
-                # Clean up the URL (DuckDuckGo wraps URLs)
-                if url.startswith('/l/?uddg='):
-                    # Extract the actual URL from DuckDuckGo's redirect
-                    import urllib.parse
-                    parsed = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)
-                    actual_url = parsed.get('uddg', [''])[0]
-                    if actual_url:
-                        url = urllib.parse.unquote(actual_url)
-                
-                snippet = snippets[i] if i < len(snippets) else ""
-                
-                results.append({
-                    'title': title.strip(),
-                    'content': snippet.strip(),
-                    'url': url,
-                    'source': 'Web Search',
+            # Convert DDGS result format to our internal format
+            formatted_results = []
+            for result in results:
+                formatted_results.append({
+                    'title': result.get('title', 'No title'),
+                    'content': result.get('body', ''),
+                    'description': result.get('body', ''),
+                    'url': result.get('href', ''),
+                    'source': 'DDGS Search',
                     'type': 'search_result'
                 })
             
-            return results
+            return formatted_results
             
         except Exception as e:
-            print(f"Search scraping error: {e}")
+            print(f"DDGS search error: {e}")
             return []
 
     def _analyze_and_enhance_results(self, results: List[Dict[str, Any]], original_query: str) -> List[Dict[str, Any]]:
